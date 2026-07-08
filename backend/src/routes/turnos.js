@@ -10,6 +10,12 @@ const MINUTOS_FIN_LABORAL = 20 * 60;
 const PASO_MINUTOS = 15;
 const ZONA_HORARIA = 'America/Argentina/Buenos_Aires';
 
+const SELECT_TURNO = `
+  SELECT t.*, u.nombre AS creado_por_nombre
+  FROM turnos t
+  LEFT JOIN usuarios u ON u.id = t.creado_por
+`;
+
 function generarSlots() {
   const slots = [];
   for (let min = MINUTOS_INICIO_LABORAL; min < MINUTOS_FIN_LABORAL; min += PASO_MINUTOS) {
@@ -81,6 +87,19 @@ router.get(
   })
 );
 
+// Lista liviana de extraccionistas activas, usada por Diagnotest para
+// armar las columnas de la grilla del dia.
+router.get(
+  '/extraccionistas',
+  requireRol('diagnotest'),
+  ah(async (req, res) => {
+    const { rows } = await pool.query(
+      "SELECT id, nombre FROM usuarios WHERE rol = 'extraccionista' ORDER BY nombre ASC"
+    );
+    res.json(rows);
+  })
+);
+
 router.get(
   '/',
   ah(async (req, res) => {
@@ -90,24 +109,24 @@ router.get(
 
     if (req.usuario.rol === 'extraccionista') {
       params.push(req.usuario.sub);
-      condiciones.push(`creado_por = $${params.length}`);
+      condiciones.push(`t.creado_por = $${params.length}`);
     }
     if (estado) {
       params.push(estado);
-      condiciones.push(`estado = $${params.length}`);
+      condiciones.push(`t.estado = $${params.length}`);
     }
     if (desde) {
       params.push(desde);
-      condiciones.push(`fecha >= $${params.length}`);
+      condiciones.push(`t.fecha >= $${params.length}`);
     }
     if (hasta) {
       params.push(hasta);
-      condiciones.push(`fecha <= $${params.length}`);
+      condiciones.push(`t.fecha <= $${params.length}`);
     }
 
     const where = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '';
     const { rows } = await pool.query(
-      `SELECT * FROM turnos ${where} ORDER BY fecha ASC, hora_inicio ASC`,
+      `${SELECT_TURNO} ${where} ORDER BY t.fecha ASC, t.hora_inicio ASC`,
       params
     );
 
@@ -118,7 +137,7 @@ router.get(
 router.get(
   '/:id',
   ah(async (req, res) => {
-    const { rows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [req.params.id]);
+    const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
     const turno = rows[0];
     if (!turno) return res.status(404).json({ error: 'Turno no encontrado' });
     if (req.usuario.rol === 'extraccionista' && turno.creado_por !== req.usuario.sub) {
@@ -153,7 +172,7 @@ router.post(
         [tutor, telefono, direccion, fecha, hora_inicio, hora_fin, req.usuario.sub]
       );
 
-      const { rows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [
+      const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [
         insertedRows[0].id,
       ]);
       res.status(201).json(rows[0]);
@@ -203,7 +222,7 @@ router.put(
       throw err;
     }
 
-    const { rows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [req.params.id]);
+    const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
     res.json(rows[0]);
   })
 );
@@ -223,7 +242,7 @@ router.post(
       [req.params.id]
     );
 
-    const { rows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [req.params.id]);
+    const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
     res.json(rows[0]);
   })
 );
@@ -247,6 +266,11 @@ router.post(
   '/:id/confirmar',
   requireRol('diagnotest'),
   ah(async (req, res) => {
+    const { numero_dt } = req.body || {};
+    if (!numero_dt) {
+      return res.status(400).json({ error: 'numero_dt es requerido para confirmar' });
+    }
+
     const { rows: existingRows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [
       req.params.id,
     ]);
@@ -257,11 +281,11 @@ router.post(
     }
 
     await pool.query(
-      "UPDATE turnos SET estado = 'confirmado', respondido_en = NOW() WHERE id = $1",
-      [req.params.id]
+      "UPDATE turnos SET estado = 'confirmado', respondido_en = NOW(), numero_dt = $1 WHERE id = $2",
+      [numero_dt, req.params.id]
     );
 
-    const { rows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [req.params.id]);
+    const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
     res.json(rows[0]);
   })
 );
@@ -287,7 +311,7 @@ router.post(
       [motivo || null, req.params.id]
     );
 
-    const { rows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [req.params.id]);
+    const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
     res.json(rows[0]);
   })
 );

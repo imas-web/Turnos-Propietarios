@@ -28,11 +28,13 @@ export const api = {
   },
   obtenerDisponibilidad: (token, fecha) =>
     request(`/turnos/disponibilidad?fecha=${fecha}`, { token }),
+  obtenerExtraccionistas: (token) => request('/turnos/extraccionistas', { token }),
   crearTurno: (token, data) => request('/turnos', { method: 'POST', body: data, token }),
   actualizarTurno: (token, id, data) => request(`/turnos/${id}`, { method: 'PUT', body: data, token }),
   cancelarTurno: (token, id) => request(`/turnos/${id}/cancelar`, { method: 'POST', token }),
   eliminarTurno: (token, id) => request(`/turnos/${id}`, { method: 'DELETE', token }),
-  confirmarTurno: (token, id) => request(`/turnos/${id}/confirmar`, { method: 'POST', token }),
+  confirmarTurno: (token, id, numero_dt) =>
+    request(`/turnos/${id}/confirmar`, { method: 'POST', body: { numero_dt }, token }),
   rechazarTurno: (token, id, motivo) =>
     request(`/turnos/${id}/rechazar`, { method: 'POST', body: { motivo }, token }),
 

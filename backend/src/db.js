@@ -53,6 +53,7 @@ const SCHEMA_SQL = `
     estado TEXT NOT NULL DEFAULT 'pendiente'
       CHECK (estado IN ('pendiente', 'confirmado', 'rechazado', 'cancelado')),
     motivo_rechazo TEXT,
+    numero_dt TEXT,
     respondido_en TIMESTAMPTZ,
     creado_por INTEGER REFERENCES usuarios(id),
     creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -67,6 +68,7 @@ const MIGRACIONES_SQL = `
   ALTER TABLE turnos ADD COLUMN IF NOT EXISTS tutor TEXT;
   ALTER TABLE turnos ADD COLUMN IF NOT EXISTS telefono TEXT;
   ALTER TABLE turnos ADD COLUMN IF NOT EXISTS direccion TEXT;
+  ALTER TABLE turnos ADD COLUMN IF NOT EXISTS numero_dt TEXT;
   UPDATE turnos SET tutor = 'Sin dato' WHERE tutor IS NULL;
   ALTER TABLE turnos ALTER COLUMN tutor SET NOT NULL;
   ALTER TABLE turnos DROP COLUMN IF EXISTS propietario_id;

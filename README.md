@@ -23,12 +23,15 @@ frontend/   Panel (React + Vite)
   `admin` (rol "admin").
 - **Extraccionista** (Jimena/Daniela): agenda (lista por día) de sus propios
   turnos ya otorgados, y un botón "Agregar turno nuevo" con Tutor, Teléfono,
-  Día y Horario. Los horarios se ofrecen cada 15 minutos entre las 08:00 y
-  las 20:00, mostrando únicamente los que esa extraccionista todavía tiene
-  libres ese día. No ve los turnos de otra extraccionista.
-- **Diagnotest**: ve la misma agenda con los turnos de todas las
-  extraccionistas, más una barra lateral con los turnos pendientes de
-  **confirmar** o **rechazar** (con motivo opcional).
+  Dirección, Día y Horario. Los horarios se ofrecen cada 15 minutos entre
+  las 08:00 y las 20:00, mostrando únicamente los que esa extraccionista
+  todavía tiene libres ese día. No ve los turnos de otra extraccionista, y
+  puede editar o cancelar los suyos.
+- **Diagnotest**: ve una grilla del día (horarios en filas, una columna por
+  extraccionista) con los turnos sin confirmar en rojo y los confirmados en
+  verde. Un botón "Turnos pendientes de confirmación" en la barra lateral
+  despliega la lista para **confirmar** (requiere cargar un número de DT) o
+  **rechazar** (con motivo opcional).
 - **Admin**: gestiona (crea, edita, elimina) las cuentas de tipo
   extraccionista y diagnotest desde el panel.
 - Estados de turno: `pendiente`, `confirmado`, `rechazado`, `cancelado`.

@@ -169,17 +169,44 @@ test('jimena no puede confirmar turnos (solo diagnotest)', async () => {
   assert.equal(res.status, 403);
 });
 
-test('diagnotest confirma un turno pendiente', async () => {
+test('diagnotest no puede confirmar sin numero de DT', async () => {
   const res = await request(app)
     .post(`/api/turnos/${turnoJimenaId}/confirmar`)
-    .set('Authorization', `Bearer ${diagnotestToken}`);
+    .set('Authorization', `Bearer ${diagnotestToken}`)
+    .send({});
+  assert.equal(res.status, 400);
+});
+
+test('diagnotest confirma un turno pendiente con numero de DT', async () => {
+  const res = await request(app)
+    .post(`/api/turnos/${turnoJimenaId}/confirmar`)
+    .set('Authorization', `Bearer ${diagnotestToken}`)
+    .send({ numero_dt: 'DT-001' });
   assert.equal(res.status, 200);
   assert.equal(res.body.estado, 'confirmado');
+  assert.equal(res.body.numero_dt, 'DT-001');
 
   const segundaVez = await request(app)
     .post(`/api/turnos/${turnoJimenaId}/confirmar`)
-    .set('Authorization', `Bearer ${diagnotestToken}`);
+    .set('Authorization', `Bearer ${diagnotestToken}`)
+    .send({ numero_dt: 'DT-002' });
   assert.equal(segundaVez.status, 409);
+});
+
+test('diagnotest ve la lista de extraccionistas para la grilla', async () => {
+  const res = await request(app)
+    .get('/api/turnos/extraccionistas')
+    .set('Authorization', `Bearer ${diagnotestToken}`);
+  assert.equal(res.status, 200);
+  assert.ok(res.body.some((u) => u.nombre === 'Jimena'));
+  assert.ok(res.body.some((u) => u.nombre === 'Daniela'));
+});
+
+test('jimena no puede ver la lista de extraccionistas (solo diagnotest)', async () => {
+  const res = await request(app)
+    .get('/api/turnos/extraccionistas')
+    .set('Authorization', `Bearer ${jimenaToken}`);
+  assert.equal(res.status, 403);
 });
 
 test('diagnotest rechaza un turno pendiente con motivo', async () => {
