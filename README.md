@@ -1,11 +1,12 @@
 # Turnos Propietarios
 
-Aplicación para gestionar turnos de extracción con tres tipos de acceso:
-dos usuarias que cargan turnos (**Jimena** y **Daniela**) y un usuario que los
-confirma o rechaza (**Diagnotest**). Cada cargadora ve únicamente los turnos
-y propietarios que ella misma creó; Diagnotest ve todos los turnos pendientes
-de ambas y los resuelve desde el panel, sin necesidad de links públicos ni
-correos.
+Aplicación para gestionar turnos de extracción con distintos tipos de acceso:
+usuarias "extraccionista" que cargan sus propios turnos (por ejemplo Jimena y
+Daniela), un usuario "diagnotest" que los confirma o rechaza, y un usuario
+"admin" que gestiona las cuentas de extraccionista/diagnotest. Cada
+extraccionista ve únicamente los turnos y propietarios que ella misma creó;
+diagnotest ve todos los turnos pendientes de todas y los resuelve desde el
+panel, sin necesidad de links públicos ni correos.
 
 ## Estructura
 
@@ -16,14 +17,17 @@ frontend/   Panel (React + Vite)
 
 ## Funcionalidad
 
-- **Login por usuario** (JWT), con tres cuentas: `jimena`, `daniela`
-  (rol "cargador") y `diagnotest` (rol "confirmador").
-- **Cargador** (Jimena/Daniela): ABM de sus propios propietarios, y ABM de
-  sus propios turnos (título, descripción, fecha y horario). No ve los
-  turnos ni propietarios de la otra cargadora.
-- **Confirmador** (Diagnotest): ve todos los turnos pendientes (de
-  cualquier cargadora) y los **confirma** o **rechaza** (con motivo
-  opcional) desde el panel.
+- **Login por usuario** (JWT), con cuatro cuentas iniciales: `jimena`,
+  `daniela` (rol "extraccionista"), `diagnotest` (rol "diagnotest") y
+  `admin` (rol "admin").
+- **Extraccionista** (Jimena/Daniela): ABM de sus propios propietarios, y ABM
+  de sus propios turnos (título, descripción, fecha y horario). No ve los
+  turnos ni propietarios de otra extraccionista.
+- **Diagnotest**: ve todos los turnos pendientes (de cualquier
+  extraccionista) y los **confirma** o **rechaza** (con motivo opcional)
+  desde el panel.
+- **Admin**: gestiona (crea, edita, elimina) las cuentas de tipo
+  extraccionista y diagnotest desde el panel.
 - Estados de turno: `pendiente`, `confirmado`, `rechazado`, `cancelado`.
 
 ## Requisitos
@@ -43,11 +47,12 @@ npm run dev    # http://localhost:4000
 
 Usuarios iniciales por defecto (configurables en `.env`):
 
-| Usuario      | Contraseña   | Rol         |
-|--------------|--------------|-------------|
-| `jimena`     | `jimena`     | cargador    |
-| `daniela`    | `daniela`    | cargador    |
-| `diagnotest` | `diagnotest` | confirmador |
+| Usuario      | Contraseña   | Rol            |
+|--------------|--------------|----------------|
+| `jimena`     | `jimena`     | extraccionista |
+| `daniela`    | `daniela`    | extraccionista |
+| `diagnotest` | `diagnotest` | diagnotest     |
+| `admin`      | `admin`      | admin          |
 
 ### Tests
 
@@ -71,10 +76,12 @@ En desarrollo, Vite redirige `/api/*` hacia `http://localhost:4000` (ver
 
 1. Jimena (o Daniela) inicia sesión, carga sus propietarios y crea turnos
    para ellos. Quedan en estado `pendiente`.
-2. Diagnotest inicia sesión y ve la lista de turnos pendientes de ambas
-   cargadoras, y los confirma o rechaza (con motivo opcional).
+2. Diagnotest inicia sesión y ve la lista de turnos pendientes de todas las
+   extraccionistas, y los confirma o rechaza (con motivo opcional).
 3. Cuando Jimena/Daniela vuelven a entrar, ven el estado actualizado de
    sus propios turnos.
+4. Admin inicia sesión y puede crear, editar o eliminar cuentas de
+   extraccionista/diagnotest según haga falta.
 
 ## Variables de entorno (backend)
 
@@ -83,9 +90,9 @@ Ver `backend/.env.example`. Lo más relevante:
 - `DATABASE_URL`: cadena de conexión a Postgres.
 - `JWT_SECRET`: secreto para firmar los tokens de sesión.
 - `JIMENA_USER` / `JIMENA_PASSWORD`, `DANIELA_USER` / `DANIELA_PASSWORD`,
-  `DIAGNOTEST_USER` / `DIAGNOTEST_PASSWORD`: credenciales de los tres
-  usuarios iniciales (se crean solos la primera vez que arranca el server
-  si no existen).
+  `DIAGNOTEST_USER` / `DIAGNOTEST_PASSWORD`, `ADMIN_USER` / `ADMIN_PASSWORD`:
+  credenciales de los usuarios iniciales (se crean solos la primera vez que
+  arranca el server si no existen).
 
 ## Deploy en Vercel
 

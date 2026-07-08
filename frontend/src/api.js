@@ -37,4 +37,9 @@ export const api = {
   confirmarTurno: (token, id) => request(`/turnos/${id}/confirmar`, { method: 'POST', token }),
   rechazarTurno: (token, id, motivo) =>
     request(`/turnos/${id}/rechazar`, { method: 'POST', body: { motivo }, token }),
+
+  listarUsuarios: (token) => request('/usuarios', { token }),
+  crearUsuario: (token, data) => request('/usuarios', { method: 'POST', body: data, token }),
+  actualizarUsuario: (token, id, data) => request(`/usuarios/${id}`, { method: 'PUT', body: data, token }),
+  eliminarUsuario: (token, id) => request(`/usuarios/${id}`, { method: 'DELETE', token }),
 };

@@ -14,7 +14,7 @@ export default function TopBar() {
     <header className="topbar">
       <h1>Turnos Propietarios</h1>
       <nav>
-        {rol === 'cargador' && (
+        {rol === 'extraccionista' && (
           <>
             <NavLink to="/turnos" className={({ isActive }) => (isActive ? 'active' : '')}>
               Turnos
@@ -24,9 +24,14 @@ export default function TopBar() {
             </NavLink>
           </>
         )}
-        {rol === 'confirmador' && (
+        {rol === 'diagnotest' && (
           <NavLink to="/confirmar" className={({ isActive }) => (isActive ? 'active' : '')}>
             Confirmar turnos
+          </NavLink>
+        )}
+        {rol === 'admin' && (
+          <NavLink to="/usuarios" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Usuarios
           </NavLink>
         )}
         <span className="muted" style={{ padding: '0.4rem 0.4rem' }}>

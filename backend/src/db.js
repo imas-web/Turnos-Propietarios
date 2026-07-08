@@ -36,7 +36,7 @@ const SCHEMA_SQL = `
     id SERIAL PRIMARY KEY,
     usuario TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
-    rol TEXT NOT NULL CHECK (rol IN ('cargador', 'confirmador')),
+    rol TEXT NOT NULL CHECK (rol IN ('extraccionista', 'diagnotest', 'admin')),
     nombre TEXT NOT NULL,
     creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
@@ -74,6 +74,14 @@ const SCHEMA_SQL = `
   ALTER TABLE turnos DROP COLUMN IF EXISTS token_expira;
   DROP TABLE IF EXISTS admins;
 
+  -- Renombra los roles del esquema anterior (cargador/confirmador) a los
+  -- nombres actuales, y permite el nuevo rol "admin".
+  ALTER TABLE usuarios DROP CONSTRAINT IF EXISTS usuarios_rol_check;
+  UPDATE usuarios SET rol = 'extraccionista' WHERE rol = 'cargador';
+  UPDATE usuarios SET rol = 'diagnotest' WHERE rol = 'confirmador';
+  ALTER TABLE usuarios ADD CONSTRAINT usuarios_rol_check
+    CHECK (rol IN ('extraccionista', 'diagnotest', 'admin'));
+
   CREATE INDEX IF NOT EXISTS idx_turnos_propietario ON turnos(propietario_id);
   CREATE INDEX IF NOT EXISTS idx_turnos_fecha ON turnos(fecha);
   CREATE INDEX IF NOT EXISTS idx_turnos_creado_por ON turnos(creado_por);
@@ -86,7 +94,7 @@ const USUARIOS_INICIALES = [
     envPass: 'JIMENA_PASSWORD',
     defaultUser: 'jimena',
     defaultPass: 'jimena',
-    rol: 'cargador',
+    rol: 'extraccionista',
     nombre: 'Jimena',
   },
   {
@@ -94,7 +102,7 @@ const USUARIOS_INICIALES = [
     envPass: 'DANIELA_PASSWORD',
     defaultUser: 'daniela',
     defaultPass: 'daniela',
-    rol: 'cargador',
+    rol: 'extraccionista',
     nombre: 'Daniela',
   },
   {
@@ -102,8 +110,16 @@ const USUARIOS_INICIALES = [
     envPass: 'DIAGNOTEST_PASSWORD',
     defaultUser: 'diagnotest',
     defaultPass: 'diagnotest',
-    rol: 'confirmador',
+    rol: 'diagnotest',
     nombre: 'Diagnotest',
+  },
+  {
+    envUser: 'ADMIN_USER',
+    envPass: 'ADMIN_PASSWORD',
+    defaultUser: 'admin',
+    defaultPass: 'admin',
+    rol: 'admin',
+    nombre: 'Admin',
   },
 ];
 

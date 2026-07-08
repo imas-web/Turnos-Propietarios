@@ -5,6 +5,7 @@ import Login from './pages/Login.jsx';
 import Propietarios from './pages/Propietarios.jsx';
 import Turnos from './pages/Turnos.jsx';
 import ConfirmarTurnos from './pages/ConfirmarTurnos.jsx';
+import Usuarios from './pages/Usuarios.jsx';
 
 function RutaPrivada({ children }) {
   const { isAuthenticated } = useAuth();
@@ -18,10 +19,15 @@ function RutaPorRol({ rol, children }) {
   return children;
 }
 
+const INICIO_POR_ROL = {
+  admin: '/usuarios',
+  diagnotest: '/confirmar',
+  extraccionista: '/turnos',
+};
+
 function Inicio() {
   const { rol } = useAuth();
-  if (rol === 'confirmador') return <Navigate to="/confirmar" replace />;
-  return <Navigate to="/turnos" replace />;
+  return <Navigate to={INICIO_POR_ROL[rol] || '/turnos'} replace />;
 }
 
 export default function App() {
@@ -39,7 +45,7 @@ export default function App() {
                 <Route
                   path="/turnos"
                   element={
-                    <RutaPorRol rol="cargador">
+                    <RutaPorRol rol="extraccionista">
                       <Turnos />
                     </RutaPorRol>
                   }
@@ -47,7 +53,7 @@ export default function App() {
                 <Route
                   path="/propietarios"
                   element={
-                    <RutaPorRol rol="cargador">
+                    <RutaPorRol rol="extraccionista">
                       <Propietarios />
                     </RutaPorRol>
                   }
@@ -55,8 +61,16 @@ export default function App() {
                 <Route
                   path="/confirmar"
                   element={
-                    <RutaPorRol rol="confirmador">
+                    <RutaPorRol rol="diagnotest">
                       <ConfirmarTurnos />
+                    </RutaPorRol>
+                  }
+                />
+                <Route
+                  path="/usuarios"
+                  element={
+                    <RutaPorRol rol="admin">
+                      <Usuarios />
                     </RutaPorRol>
                   }
                 />

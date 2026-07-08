@@ -21,7 +21,7 @@ router.get(
     const condiciones = [];
     const params = [];
 
-    if (req.usuario.rol === 'cargador') {
+    if (req.usuario.rol === 'extraccionista') {
       params.push(req.usuario.sub);
       condiciones.push(`t.creado_por = $${params.length}`);
     }
@@ -58,7 +58,7 @@ router.get(
     const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
     const turno = rows[0];
     if (!turno) return res.status(404).json({ error: 'Turno no encontrado' });
-    if (req.usuario.rol === 'cargador' && turno.creado_por !== req.usuario.sub) {
+    if (req.usuario.rol === 'extraccionista' && turno.creado_por !== req.usuario.sub) {
       return res.status(404).json({ error: 'Turno no encontrado' });
     }
     res.json(turno);
@@ -67,7 +67,7 @@ router.get(
 
 router.post(
   '/',
-  requireRol('cargador'),
+  requireRol('extraccionista'),
   ah(async (req, res) => {
     const { propietario_id, titulo, descripcion, fecha, hora_inicio, hora_fin } =
       req.body || {};
@@ -111,7 +111,7 @@ router.post(
 
 router.put(
   '/:id',
-  requireRol('cargador'),
+  requireRol('extraccionista'),
   ah(async (req, res) => {
     const { rows: existingRows } = await pool.query(
       'SELECT * FROM turnos WHERE id = $1 AND creado_por = $2',
@@ -142,7 +142,7 @@ router.put(
 
 router.post(
   '/:id/cancelar',
-  requireRol('cargador'),
+  requireRol('extraccionista'),
   ah(async (req, res) => {
     const { rows: existingRows } = await pool.query(
       'SELECT * FROM turnos WHERE id = $1 AND creado_por = $2',
@@ -162,7 +162,7 @@ router.post(
 
 router.delete(
   '/:id',
-  requireRol('cargador'),
+  requireRol('extraccionista'),
   ah(async (req, res) => {
     const { rows } = await pool.query(
       'DELETE FROM turnos WHERE id = $1 AND creado_por = $2 RETURNING id',
@@ -173,11 +173,11 @@ router.delete(
   })
 );
 
-// Confirmacion/rechazo interno: solo el usuario "confirmador" (Diagnotest)
+// Confirmacion/rechazo interno: solo el rol "diagnotest"
 // puede resolver turnos pendientes, sin importar quien los haya cargado.
 router.post(
   '/:id/confirmar',
-  requireRol('confirmador'),
+  requireRol('diagnotest'),
   ah(async (req, res) => {
     const { rows: existingRows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [
       req.params.id,
@@ -200,7 +200,7 @@ router.post(
 
 router.post(
   '/:id/rechazar',
-  requireRol('confirmador'),
+  requireRol('diagnotest'),
   ah(async (req, res) => {
     const { rows: existingRows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [
       req.params.id,
