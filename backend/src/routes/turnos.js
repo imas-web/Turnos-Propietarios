@@ -132,11 +132,11 @@ router.post(
   '/',
   requireRol('extraccionista'),
   ah(async (req, res) => {
-    const { tutor, telefono, fecha, hora_inicio } = req.body || {};
+    const { tutor, telefono, direccion, fecha, hora_inicio } = req.body || {};
 
-    if (!tutor || !telefono || !fecha || !hora_inicio) {
+    if (!tutor || !telefono || !direccion || !fecha || !hora_inicio) {
       return res.status(400).json({
-        error: 'tutor, telefono, fecha y hora_inicio son requeridos',
+        error: 'tutor, telefono, direccion, fecha y hora_inicio son requeridos',
       });
     }
     if (!generarSlots().includes(hora_inicio)) {
@@ -147,10 +147,10 @@ router.post(
 
     try {
       const { rows: insertedRows } = await pool.query(
-        `INSERT INTO turnos (tutor, telefono, fecha, hora_inicio, hora_fin, creado_por)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO turnos (tutor, telefono, direccion, fecha, hora_inicio, hora_fin, creado_por)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING id`,
-        [tutor, telefono, fecha, hora_inicio, hora_fin, req.usuario.sub]
+        [tutor, telefono, direccion, fecha, hora_inicio, hora_fin, req.usuario.sub]
       );
 
       const { rows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [
@@ -177,18 +177,19 @@ router.put(
     const existing = existingRows[0];
     if (!existing) return res.status(404).json({ error: 'Turno no encontrado' });
 
-    const { tutor, telefono, fecha, hora_inicio } = req.body || {};
+    const { tutor, telefono, direccion, fecha, hora_inicio } = req.body || {};
     const nuevaHoraInicio = hora_inicio ?? existing.hora_inicio;
     const nuevaHoraFin = hora_inicio ? sumarMinutos(hora_inicio, PASO_MINUTOS) : existing.hora_fin;
 
     try {
       await pool.query(
         `UPDATE turnos
-         SET tutor = $1, telefono = $2, fecha = $3, hora_inicio = $4, hora_fin = $5
-         WHERE id = $6`,
+         SET tutor = $1, telefono = $2, direccion = $3, fecha = $4, hora_inicio = $5, hora_fin = $6
+         WHERE id = $7`,
         [
           tutor ?? existing.tutor,
           telefono ?? existing.telefono,
+          direccion ?? existing.direccion,
           fecha ?? existing.fecha,
           nuevaHoraInicio,
           nuevaHoraFin,

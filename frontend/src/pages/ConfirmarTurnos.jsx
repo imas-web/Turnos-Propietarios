@@ -101,6 +101,7 @@ export default function ConfirmarTurnos() {
               </div>
               <strong>{t.tutor}</strong>
               <div className="muted">{t.telefono}</div>
+              <div className="muted">{t.direccion}</div>
               <div className="actions-row" style={{ marginTop: '0.5rem' }}>
                 <button className="btn btn-success" onClick={() => confirmar(t.id)}>
                   Confirmar
@@ -139,6 +140,7 @@ export default function ConfirmarTurnos() {
                     <div className="agenda-datos">
                       <strong>{t.tutor}</strong>
                       <div className="muted">{t.telefono}</div>
+                      <div className="muted">{t.direccion}</div>
                       {t.estado === 'rechazado' && t.motivo_rechazo && (
                         <div className="muted">Motivo: {t.motivo_rechazo}</div>
                       )}

@@ -85,6 +85,7 @@ test('jimena crea un turno con tutor y telefono', async () => {
     .send({
       tutor: 'Familia Perez',
       telefono: '11-4444-5555',
+      direccion: 'Av. Siempre Viva 123',
       fecha: FECHA_FUTURA,
       hora_inicio: '10:00',
     });
@@ -109,6 +110,7 @@ test('daniela si puede tomar el mismo horario (agenda por extraccionista)', asyn
     .send({
       tutor: 'Familia Gomez',
       telefono: '11-5555-6666',
+      direccion: 'Calle Falsa 456',
       fecha: FECHA_FUTURA,
       hora_inicio: '10:00',
     });
@@ -122,6 +124,7 @@ test('jimena no puede crear otro turno en el mismo horario ya ocupado', async ()
     .send({
       tutor: 'Otra familia',
       telefono: '11-0000-0000',
+      direccion: 'Otra direccion 789',
       fecha: FECHA_FUTURA,
       hora_inicio: '10:00',
     });
@@ -135,6 +138,7 @@ test('rechaza un horario que no es multiplo de 15 minutos', async () => {
     .send({
       tutor: 'Familia Ruiz',
       telefono: '11-1111-2222',
+      direccion: 'Calle Ruiz 111',
       fecha: FECHA_FUTURA,
       hora_inicio: '10:07',
     });
@@ -185,6 +189,7 @@ test('diagnotest rechaza un turno pendiente con motivo', async () => {
     .send({
       tutor: 'Familia a rechazar',
       telefono: '11-9999-8888',
+      direccion: 'Calle a rechazar 222',
       fecha: FECHA_FUTURA,
       hora_inicio: '11:00',
     });

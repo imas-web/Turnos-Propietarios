@@ -46,6 +46,7 @@ const SCHEMA_SQL = `
     id SERIAL PRIMARY KEY,
     tutor TEXT NOT NULL,
     telefono TEXT,
+    direccion TEXT,
     fecha TEXT NOT NULL,
     hora_inicio TEXT NOT NULL,
     hora_fin TEXT NOT NULL,
@@ -65,6 +66,7 @@ const SCHEMA_SQL = `
 const MIGRACIONES_SQL = `
   ALTER TABLE turnos ADD COLUMN IF NOT EXISTS tutor TEXT;
   ALTER TABLE turnos ADD COLUMN IF NOT EXISTS telefono TEXT;
+  ALTER TABLE turnos ADD COLUMN IF NOT EXISTS direccion TEXT;
   UPDATE turnos SET tutor = 'Sin dato' WHERE tutor IS NULL;
   ALTER TABLE turnos ALTER COLUMN tutor SET NOT NULL;
   ALTER TABLE turnos DROP COLUMN IF EXISTS propietario_id;
