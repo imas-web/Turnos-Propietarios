@@ -3,11 +3,28 @@ import bcrypt from 'bcryptjs';
 
 const { Pool } = pg;
 
-const connectionString =
+const rawConnectionString =
   process.env.DATABASE_URL ||
   process.env.POSTGRES_URL ||
   process.env.DATABASE_POSTGRES_URL;
-const isLocal = /localhost|127\.0\.0\.1/.test(connectionString || '');
+const isLocal = /localhost|127\.0\.0\.1/.test(rawConnectionString || '');
+
+// Algunos proveedores (Supabase, etc.) incluyen "sslmode" en la cadena de
+// conexion, lo que hace que pg use su propia validacion estricta de
+// certificado en vez de la opcion "ssl" que le pasamos aca abajo. Se quita
+// para que la configuracion de ssl sea siempre la que definimos nosotros.
+function limpiarSslMode(url) {
+  if (!url) return url;
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.delete('sslmode');
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
+const connectionString = limpiarSslMode(rawConnectionString);
 
 export const pool = new Pool({
   connectionString,
