@@ -3,7 +3,10 @@ import bcrypt from 'bcryptjs';
 
 const { Pool } = pg;
 
-const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+const connectionString =
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_URL ||
+  process.env.DATABASE_POSTGRES_URL;
 const isLocal = /localhost|127\.0\.0\.1/.test(connectionString || '');
 
 export const pool = new Pool({
