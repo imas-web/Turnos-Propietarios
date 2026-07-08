@@ -32,10 +32,12 @@ export const pool = new Pool({
 });
 
 const SCHEMA_SQL = `
-  CREATE TABLE IF NOT EXISTS admins (
+  CREATE TABLE IF NOT EXISTS usuarios (
     id SERIAL PRIMARY KEY,
     usuario TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
+    rol TEXT NOT NULL CHECK (rol IN ('cargador', 'confirmador')),
+    nombre TEXT NOT NULL,
     creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
 
@@ -46,6 +48,7 @@ const SCHEMA_SQL = `
     telefono TEXT,
     unidad TEXT NOT NULL,
     activo INTEGER NOT NULL DEFAULT 1,
+    creado_por INTEGER REFERENCES usuarios(id),
     creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
 
@@ -59,40 +62,75 @@ const SCHEMA_SQL = `
     hora_fin TEXT NOT NULL,
     estado TEXT NOT NULL DEFAULT 'pendiente'
       CHECK (estado IN ('pendiente', 'confirmado', 'rechazado', 'cancelado')),
-    token TEXT UNIQUE NOT NULL,
-    token_expira TIMESTAMPTZ,
-    respondido_en TIMESTAMPTZ,
     motivo_rechazo TEXT,
+    respondido_en TIMESTAMPTZ,
+    creado_por INTEGER REFERENCES usuarios(id),
     creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
 
+  ALTER TABLE propietarios ADD COLUMN IF NOT EXISTS creado_por INTEGER REFERENCES usuarios(id);
+  ALTER TABLE turnos ADD COLUMN IF NOT EXISTS creado_por INTEGER REFERENCES usuarios(id);
+  ALTER TABLE turnos DROP COLUMN IF EXISTS token;
+  ALTER TABLE turnos DROP COLUMN IF EXISTS token_expira;
+  DROP TABLE IF EXISTS admins;
+
   CREATE INDEX IF NOT EXISTS idx_turnos_propietario ON turnos(propietario_id);
   CREATE INDEX IF NOT EXISTS idx_turnos_fecha ON turnos(fecha);
-  CREATE INDEX IF NOT EXISTS idx_turnos_token ON turnos(token);
+  CREATE INDEX IF NOT EXISTS idx_turnos_creado_por ON turnos(creado_por);
+  CREATE INDEX IF NOT EXISTS idx_propietarios_creado_por ON propietarios(creado_por);
 `;
 
-async function ensureAdmin() {
-  const usuario = process.env.ADMIN_USER || 'admin';
-  const password = process.env.ADMIN_PASSWORD || 'admin123';
-  const { rows } = await pool.query('SELECT id FROM admins WHERE usuario = $1', [usuario]);
-  if (rows.length === 0) {
-    const hash = bcrypt.hashSync(password, 10);
-    await pool.query('INSERT INTO admins (usuario, password_hash) VALUES ($1, $2)', [
-      usuario,
-      hash,
-    ]);
-    console.log(`Usuario administrador creado: ${usuario}`);
+const USUARIOS_INICIALES = [
+  {
+    envUser: 'JIMENA_USER',
+    envPass: 'JIMENA_PASSWORD',
+    defaultUser: 'jimena',
+    defaultPass: 'jimena',
+    rol: 'cargador',
+    nombre: 'Jimena',
+  },
+  {
+    envUser: 'DANIELA_USER',
+    envPass: 'DANIELA_PASSWORD',
+    defaultUser: 'daniela',
+    defaultPass: 'daniela',
+    rol: 'cargador',
+    nombre: 'Daniela',
+  },
+  {
+    envUser: 'DIAGNOTEST_USER',
+    envPass: 'DIAGNOTEST_PASSWORD',
+    defaultUser: 'diagnotest',
+    defaultPass: 'diagnotest',
+    rol: 'confirmador',
+    nombre: 'Diagnotest',
+  },
+];
+
+async function ensureUsuarios() {
+  for (const u of USUARIOS_INICIALES) {
+    const usuario = process.env[u.envUser] || u.defaultUser;
+    const password = process.env[u.envPass] || u.defaultPass;
+    const { rows } = await pool.query('SELECT id FROM usuarios WHERE usuario = $1', [usuario]);
+    if (rows.length === 0) {
+      const hash = bcrypt.hashSync(password, 10);
+      await pool.query(
+        'INSERT INTO usuarios (usuario, password_hash, rol, nombre) VALUES ($1, $2, $3, $4)',
+        [usuario, hash, u.rol, u.nombre]
+      );
+      console.log(`Usuario creado: ${usuario} (${u.rol})`);
+    }
   }
 }
 
 let initPromise;
 
-// Crea las tablas y el admin inicial la primera vez que se necesita la base.
-// En serverless (Vercel) esto corre una vez por instancia "cold start" y
-// despues queda memoizado durante la vida de esa instancia.
+// Crea/actualiza las tablas y los usuarios iniciales la primera vez que se
+// necesita la base. En serverless (Vercel) esto corre una vez por instancia
+// "cold start" y despues queda memoizado durante la vida de esa instancia.
 export function ensureInit() {
   if (!initPromise) {
-    initPromise = pool.query(SCHEMA_SQL).then(() => ensureAdmin());
+    initPromise = pool.query(SCHEMA_SQL).then(() => ensureUsuarios());
   }
   return initPromise;
 }

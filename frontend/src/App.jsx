@@ -4,7 +4,7 @@ import TopBar from './components/TopBar.jsx';
 import Login from './pages/Login.jsx';
 import Propietarios from './pages/Propietarios.jsx';
 import Turnos from './pages/Turnos.jsx';
-import ConfirmarTurno from './pages/ConfirmarTurno.jsx';
+import ConfirmarTurnos from './pages/ConfirmarTurnos.jsx';
 
 function RutaPrivada({ children }) {
   const { isAuthenticated } = useAuth();
@@ -12,10 +12,21 @@ function RutaPrivada({ children }) {
   return children;
 }
 
+function RutaPorRol({ rol, children }) {
+  const { rol: rolActual } = useAuth();
+  if (rolActual !== rol) return <Navigate to="/" replace />;
+  return children;
+}
+
+function Inicio() {
+  const { rol } = useAuth();
+  if (rol === 'confirmador') return <Navigate to="/confirmar" replace />;
+  return <Navigate to="/turnos" replace />;
+}
+
 export default function App() {
   return (
     <Routes>
-      <Route path="/confirmar/:token" element={<ConfirmarTurno />} />
       <Route path="/login" element={<Login />} />
       <Route
         path="/*"
@@ -24,10 +35,32 @@ export default function App() {
             <div className="app-shell">
               <TopBar />
               <Routes>
-                <Route path="/" element={<Navigate to="/turnos" replace />} />
-                <Route path="/turnos" element={<Turnos />} />
-                <Route path="/propietarios" element={<Propietarios />} />
-                <Route path="*" element={<Navigate to="/turnos" replace />} />
+                <Route path="/" element={<Inicio />} />
+                <Route
+                  path="/turnos"
+                  element={
+                    <RutaPorRol rol="cargador">
+                      <Turnos />
+                    </RutaPorRol>
+                  }
+                />
+                <Route
+                  path="/propietarios"
+                  element={
+                    <RutaPorRol rol="cargador">
+                      <Propietarios />
+                    </RutaPorRol>
+                  }
+                />
+                <Route
+                  path="/confirmar"
+                  element={
+                    <RutaPorRol rol="confirmador">
+                      <ConfirmarTurnos />
+                    </RutaPorRol>
+                  }
+                />
+                <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </div>
           </RutaPrivada>

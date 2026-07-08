@@ -66,19 +66,10 @@ export default function Turnos() {
     try {
       await api.crearTurno(token, form);
       setForm(FORM_VACIO);
-      setMensaje('Turno creado. Se genero el link de confirmacion para el propietario.');
+      setMensaje('Turno creado. Queda pendiente de confirmacion por Diagnotest.');
       await cargarTurnos();
     } catch (err) {
       setError(err.message);
-    }
-  };
-
-  const copiarLink = async (link) => {
-    try {
-      await navigator.clipboard.writeText(link);
-      setMensaje('Link de confirmacion copiado al portapapeles.');
-    } catch {
-      setMensaje(link);
     }
   };
 
@@ -87,18 +78,6 @@ export default function Turnos() {
     setError('');
     try {
       await api.cancelarTurno(token, id);
-      await cargarTurnos();
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const reenviar = async (id) => {
-    setError('');
-    setMensaje('');
-    try {
-      await api.reenviarTurno(token, id);
-      setMensaje('Se genero un nuevo link de confirmacion.');
       await cargarTurnos();
     } catch (err) {
       setError(err.message);
@@ -159,7 +138,7 @@ export default function Turnos() {
           </div>
           <div className="actions-row" style={{ marginTop: '1rem' }}>
             <button className="btn btn-primary" type="submit">
-              Crear turno y generar confirmacion
+              Crear turno
             </button>
           </div>
         </form>
@@ -217,16 +196,6 @@ export default function Turnos() {
                   </td>
                   <td>
                     <div className="actions-row">
-                      {t.estado === 'pendiente' && t.link_confirmacion && (
-                        <button className="btn btn-success" onClick={() => copiarLink(t.link_confirmacion)}>
-                          Copiar link
-                        </button>
-                      )}
-                      {(t.estado === 'rechazado' || t.estado === 'pendiente') && (
-                        <button className="btn" onClick={() => reenviar(t.id)}>
-                          Reenviar
-                        </button>
-                      )}
                       {t.estado !== 'cancelado' && (
                         <button className="btn" onClick={() => cancelar(t.id)}>
                           Cancelar

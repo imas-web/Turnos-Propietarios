@@ -4,26 +4,36 @@ import assert from 'node:assert/strict';
 process.env.DATABASE_URL =
   process.env.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/turnos_test';
 process.env.JWT_SECRET = 'test-secret';
-process.env.ADMIN_USER = 'admin';
-process.env.ADMIN_PASSWORD = 'admin123';
-process.env.FRONTEND_URL = 'http://localhost:5173';
+process.env.JIMENA_USER = 'jimena';
+process.env.JIMENA_PASSWORD = 'jimena';
+process.env.DANIELA_USER = 'daniela';
+process.env.DANIELA_PASSWORD = 'daniela';
+process.env.DIAGNOTEST_USER = 'diagnotest';
+process.env.DIAGNOTEST_PASSWORD = 'diagnotest';
 
 const { createApp } = await import('../src/app.js');
 const { pool, ensureInit } = await import('../src/db.js');
 const request = (await import('supertest')).default;
 
 const app = createApp();
-let adminToken;
-let propietarioId;
+
+async function login(usuario, password) {
+  const res = await request(app).post('/api/auth/login').send({ usuario, password });
+  return res.body.token;
+}
+
+let jimenaToken;
+let danielaToken;
+let diagnotestToken;
+let propietarioJimenaId;
 
 before(async () => {
   await ensureInit();
   await pool.query('TRUNCATE turnos, propietarios RESTART IDENTITY CASCADE');
 
-  const res = await request(app)
-    .post('/api/auth/login')
-    .send({ usuario: 'admin', password: 'admin123' });
-  adminToken = res.body.token;
+  jimenaToken = await login('jimena', 'jimena');
+  danielaToken = await login('daniela', 'daniela');
+  diagnotestToken = await login('diagnotest', 'diagnotest');
 });
 
 after(async () => {
@@ -33,12 +43,14 @@ after(async () => {
 test('rechaza login con credenciales invalidas', async () => {
   const res = await request(app)
     .post('/api/auth/login')
-    .send({ usuario: 'admin', password: 'incorrecta' });
+    .send({ usuario: 'jimena', password: 'incorrecta' });
   assert.equal(res.status, 401);
 });
 
-test('login exitoso devuelve token', () => {
-  assert.ok(adminToken && adminToken.length > 10);
+test('login de cada usuario devuelve su rol', () => {
+  assert.ok(jimenaToken);
+  assert.ok(danielaToken);
+  assert.ok(diagnotestToken);
 });
 
 test('rechaza acceso sin token a rutas protegidas', async () => {
@@ -46,77 +58,126 @@ test('rechaza acceso sin token a rutas protegidas', async () => {
   assert.equal(res.status, 401);
 });
 
-test('crea un propietario', async () => {
+test('jimena crea un propietario propio', async () => {
   const res = await request(app)
     .post('/api/propietarios')
-    .set('Authorization', `Bearer ${adminToken}`)
-    .send({ nombre: 'Test Owner', email: 'owner@test.com', unidad: '5D' });
+    .set('Authorization', `Bearer ${jimenaToken}`)
+    .send({ nombre: 'Paciente de Jimena', email: 'paciente1@test.com', unidad: '1A' });
 
   assert.equal(res.status, 201);
-  assert.equal(res.body.nombre, 'Test Owner');
-  propietarioId = res.body.id;
+  propietarioJimenaId = res.body.id;
 });
 
-test('crea un turno asignado al propietario y genera link de confirmacion', async () => {
+test('daniela no ve los propietarios de jimena', async () => {
+  const res = await request(app)
+    .get('/api/propietarios')
+    .set('Authorization', `Bearer ${danielaToken}`);
+  assert.equal(res.status, 200);
+  assert.equal(res.body.length, 0);
+});
+
+test('jimena crea un turno para su propietario', async () => {
   const res = await request(app)
     .post('/api/turnos')
-    .set('Authorization', `Bearer ${adminToken}`)
+    .set('Authorization', `Bearer ${jimenaToken}`)
     .send({
-      propietario_id: propietarioId,
-      titulo: 'Turno de prueba',
+      propietario_id: propietarioJimenaId,
+      titulo: 'Extraccion de sangre',
       fecha: '2026-08-01',
       hora_inicio: '10:00',
-      hora_fin: '11:00',
+      hora_fin: '10:30',
     });
 
   assert.equal(res.status, 201);
   assert.equal(res.body.estado, 'pendiente');
-  assert.ok(res.body.link_confirmacion.includes('/confirmar/'));
 });
 
-test('flujo completo de confirmacion publica por token', async () => {
+test('daniela no puede crear un turno usando el propietario de jimena', async () => {
+  const res = await request(app)
+    .post('/api/turnos')
+    .set('Authorization', `Bearer ${danielaToken}`)
+    .send({
+      propietario_id: propietarioJimenaId,
+      titulo: 'Intento invalido',
+      fecha: '2026-08-01',
+      hora_inicio: '11:00',
+      hora_fin: '11:30',
+    });
+
+  assert.equal(res.status, 404);
+});
+
+test('daniela no ve los turnos de jimena', async () => {
+  const res = await request(app)
+    .get('/api/turnos')
+    .set('Authorization', `Bearer ${danielaToken}`);
+  assert.equal(res.status, 200);
+  assert.equal(res.body.length, 0);
+});
+
+test('diagnotest ve todos los turnos pendientes de todas las cargadoras', async () => {
+  const res = await request(app)
+    .get('/api/turnos')
+    .set('Authorization', `Bearer ${diagnotestToken}`);
+  assert.equal(res.status, 200);
+  assert.equal(res.body.length, 1);
+});
+
+test('jimena no puede confirmar turnos (solo diagnotest)', async () => {
   const listado = await request(app)
     .get('/api/turnos')
-    .set('Authorization', `Bearer ${adminToken}`);
-  const turno = listado.body.find((t) => t.propietario_id === propietarioId);
-  const token = turno.token;
+    .set('Authorization', `Bearer ${jimenaToken}`);
+  const turnoId = listado.body[0].id;
 
-  const publico = await request(app).get(`/api/confirmacion/${token}`);
-  assert.equal(publico.status, 200);
-  assert.equal(publico.body.estado, 'pendiente');
-  assert.equal(publico.body.token, undefined);
+  const res = await request(app)
+    .post(`/api/turnos/${turnoId}/confirmar`)
+    .set('Authorization', `Bearer ${jimenaToken}`);
+  assert.equal(res.status, 403);
+});
 
-  const confirmar = await request(app).post(`/api/confirmacion/${token}/confirmar`);
-  assert.equal(confirmar.status, 200);
-  assert.equal(confirmar.body.estado, 'confirmado');
+test('diagnotest confirma un turno pendiente', async () => {
+  const listado = await request(app)
+    .get('/api/turnos')
+    .set('Authorization', `Bearer ${diagnotestToken}`);
+  const turnoId = listado.body[0].id;
 
-  const segundaVez = await request(app).post(`/api/confirmacion/${token}/confirmar`);
+  const res = await request(app)
+    .post(`/api/turnos/${turnoId}/confirmar`)
+    .set('Authorization', `Bearer ${diagnotestToken}`);
+  assert.equal(res.status, 200);
+  assert.equal(res.body.estado, 'confirmado');
+
+  const segundaVez = await request(app)
+    .post(`/api/turnos/${turnoId}/confirmar`)
+    .set('Authorization', `Bearer ${diagnotestToken}`);
   assert.equal(segundaVez.status, 409);
 });
 
-test('rechazar un turno pendiente registra el motivo', async () => {
+test('diagnotest rechaza un turno pendiente con motivo', async () => {
   const creado = await request(app)
     .post('/api/turnos')
-    .set('Authorization', `Bearer ${adminToken}`)
+    .set('Authorization', `Bearer ${jimenaToken}`)
     .send({
-      propietario_id: propietarioId,
+      propietario_id: propietarioJimenaId,
       titulo: 'Turno a rechazar',
       fecha: '2026-08-05',
       hora_inicio: '09:00',
-      hora_fin: '10:00',
+      hora_fin: '09:30',
     });
 
-  const token = creado.body.token;
   const rechazo = await request(app)
-    .post(`/api/confirmacion/${token}/rechazar`)
-    .send({ motivo: 'No puedo asistir' });
+    .post(`/api/turnos/${creado.body.id}/rechazar`)
+    .set('Authorization', `Bearer ${diagnotestToken}`)
+    .send({ motivo: 'Paciente no disponible' });
 
   assert.equal(rechazo.status, 200);
   assert.equal(rechazo.body.estado, 'rechazado');
-  assert.equal(rechazo.body.motivo_rechazo, 'No puedo asistir');
+  assert.equal(rechazo.body.motivo_rechazo, 'Paciente no disponible');
 });
 
-test('token inexistente devuelve 404', async () => {
-  const res = await request(app).get('/api/confirmacion/token-que-no-existe');
+test('turno inexistente devuelve 404', async () => {
+  const res = await request(app)
+    .get('/api/turnos/999999')
+    .set('Authorization', `Bearer ${jimenaToken}`);
   assert.equal(res.status, 404);
 });

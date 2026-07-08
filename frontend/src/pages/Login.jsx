@@ -11,7 +11,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
 
-  if (isAuthenticated) return <Navigate to="/turnos" replace />;
+  if (isAuthenticated) return <Navigate to="/" replace />;
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -19,8 +19,8 @@ export default function Login() {
     setCargando(true);
     try {
       const data = await api.login(usuario, password);
-      login(data.token, data.usuario);
-      navigate('/turnos');
+      login(data.token, data);
+      navigate('/');
     } catch (err) {
       setError(err.message);
     } finally {

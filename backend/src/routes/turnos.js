@@ -1,8 +1,6 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
-import { requireAuth } from '../middleware/auth.js';
-import { generarToken } from '../utils/token.js';
-import { enviarCorreoConfirmacion } from '../utils/mailer.js';
+import { requireAuth, requireRol } from '../middleware/auth.js';
 import { ah } from '../utils/asyncHandler.js';
 
 const router = Router();
@@ -14,11 +12,6 @@ const SELECT_TURNO = `
   JOIN propietarios p ON p.id = t.propietario_id
 `;
 
-function linkConfirmacion(token) {
-  const base = process.env.FRONTEND_URL || 'http://localhost:5173';
-  return `${base.replace(/\/$/, '')}/confirmar/${token}`;
-}
-
 router.use(requireAuth);
 
 router.get(
@@ -28,6 +21,10 @@ router.get(
     const condiciones = [];
     const params = [];
 
+    if (req.usuario.rol === 'cargador') {
+      params.push(req.usuario.sub);
+      condiciones.push(`t.creado_por = $${params.length}`);
+    }
     if (estado) {
       params.push(estado);
       condiciones.push(`t.estado = $${params.length}`);
@@ -51,12 +48,7 @@ router.get(
       params
     );
 
-    res.json(
-      rows.map((t) => ({
-        ...t,
-        link_confirmacion: t.estado === 'pendiente' ? linkConfirmacion(t.token) : null,
-      }))
-    );
+    res.json(rows);
   })
 );
 
@@ -66,12 +58,16 @@ router.get(
     const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
     const turno = rows[0];
     if (!turno) return res.status(404).json({ error: 'Turno no encontrado' });
-    res.json({ ...turno, link_confirmacion: linkConfirmacion(turno.token) });
+    if (req.usuario.rol === 'cargador' && turno.creado_por !== req.usuario.sub) {
+      return res.status(404).json({ error: 'Turno no encontrado' });
+    }
+    res.json(turno);
   })
 );
 
 router.post(
   '/',
+  requireRol('cargador'),
   ah(async (req, res) => {
     const { propietario_id, titulo, descripcion, fecha, hora_inicio, hora_fin } =
       req.body || {};
@@ -83,44 +79,44 @@ router.post(
     }
 
     const { rows: propietarioRows } = await pool.query(
-      'SELECT * FROM propietarios WHERE id = $1',
-      [propietario_id]
+      'SELECT * FROM propietarios WHERE id = $1 AND creado_por = $2',
+      [propietario_id, req.usuario.sub]
     );
-    const propietario = propietarioRows[0];
-    if (!propietario) return res.status(404).json({ error: 'Propietario no encontrado' });
+    if (!propietarioRows[0]) {
+      return res.status(404).json({ error: 'Propietario no encontrado' });
+    }
 
-    const token = generarToken();
     const { rows: insertedRows } = await pool.query(
       `INSERT INTO turnos
-        (propietario_id, titulo, descripcion, fecha, hora_inicio, hora_fin, token)
+        (propietario_id, titulo, descripcion, fecha, hora_inicio, hora_fin, creado_por)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id`,
-      [propietario_id, titulo, descripcion || null, fecha, hora_inicio, hora_fin, token]
+      [
+        propietario_id,
+        titulo,
+        descripcion || null,
+        fecha,
+        hora_inicio,
+        hora_fin,
+        req.usuario.sub,
+      ]
     );
 
     const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [
       insertedRows[0].id,
     ]);
-    const turno = rows[0];
-    const link = linkConfirmacion(token);
-
-    const envio = await enviarCorreoConfirmacion({
-      to: propietario.email,
-      nombre: propietario.nombre,
-      turno,
-      link,
-    });
-
-    res.status(201).json({ ...turno, link_confirmacion: link, correo_enviado: envio.enviado });
+    res.status(201).json(rows[0]);
   })
 );
 
 router.put(
   '/:id',
+  requireRol('cargador'),
   ah(async (req, res) => {
-    const { rows: existingRows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [
-      req.params.id,
-    ]);
+    const { rows: existingRows } = await pool.query(
+      'SELECT * FROM turnos WHERE id = $1 AND creado_por = $2',
+      [req.params.id, req.usuario.sub]
+    );
     const existing = existingRows[0];
     if (!existing) return res.status(404).json({ error: 'Turno no encontrado' });
 
@@ -146,10 +142,12 @@ router.put(
 
 router.post(
   '/:id/cancelar',
+  requireRol('cargador'),
   ah(async (req, res) => {
-    const { rows: existingRows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [
-      req.params.id,
-    ]);
+    const { rows: existingRows } = await pool.query(
+      'SELECT * FROM turnos WHERE id = $1 AND creado_por = $2',
+      [req.params.id, req.usuario.sub]
+    );
     if (!existingRows[0]) return res.status(404).json({ error: 'Turno no encontrado' });
 
     await pool.query(
@@ -162,46 +160,67 @@ router.post(
   })
 );
 
-// Reenvia la confirmacion generando un nuevo token, util si el turno
-// fue rechazado y se quiere reintentar, o si el link anterior se perdio.
-router.post(
-  '/:id/reenviar',
+router.delete(
+  '/:id',
+  requireRol('cargador'),
   ah(async (req, res) => {
-    const { rows: existingRows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [
+    const { rows } = await pool.query(
+      'DELETE FROM turnos WHERE id = $1 AND creado_por = $2 RETURNING id',
+      [req.params.id, req.usuario.sub]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Turno no encontrado' });
+    res.status(204).send();
+  })
+);
+
+// Confirmacion/rechazo interno: solo el usuario "confirmador" (Diagnotest)
+// puede resolver turnos pendientes, sin importar quien los haya cargado.
+router.post(
+  '/:id/confirmar',
+  requireRol('confirmador'),
+  ah(async (req, res) => {
+    const { rows: existingRows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [
       req.params.id,
     ]);
     const existing = existingRows[0];
     if (!existing) return res.status(404).json({ error: 'Turno no encontrado' });
+    if (existing.estado !== 'pendiente') {
+      return res.status(409).json({ error: `El turno ya fue respondido (${existing.estado})` });
+    }
 
-    const token = generarToken();
     await pool.query(
-      `UPDATE turnos
-       SET token = $1, estado = 'pendiente', respondido_en = NULL, motivo_rechazo = NULL
-       WHERE id = $2`,
-      [token, req.params.id]
+      "UPDATE turnos SET estado = 'confirmado', respondido_en = NOW() WHERE id = $1",
+      [req.params.id]
     );
 
-    const link = linkConfirmacion(token);
-    const envio = await enviarCorreoConfirmacion({
-      to: existing.propietario_email,
-      nombre: existing.propietario_nombre,
-      turno: existing,
-      link,
-    });
-
     const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
-    res.json({ ...rows[0], link_confirmacion: link, correo_enviado: envio.enviado });
+    res.json(rows[0]);
   })
 );
 
-router.delete(
-  '/:id',
+router.post(
+  '/:id/rechazar',
+  requireRol('confirmador'),
   ah(async (req, res) => {
-    const { rows } = await pool.query('DELETE FROM turnos WHERE id = $1 RETURNING id', [
+    const { rows: existingRows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [
       req.params.id,
     ]);
-    if (!rows[0]) return res.status(404).json({ error: 'Turno no encontrado' });
-    res.status(204).send();
+    const existing = existingRows[0];
+    if (!existing) return res.status(404).json({ error: 'Turno no encontrado' });
+    if (existing.estado !== 'pendiente') {
+      return res.status(409).json({ error: `El turno ya fue respondido (${existing.estado})` });
+    }
+
+    const { motivo } = req.body || {};
+    await pool.query(
+      `UPDATE turnos
+       SET estado = 'rechazado', respondido_en = NOW(), motivo_rechazo = $1
+       WHERE id = $2`,
+      [motivo || null, req.params.id]
+    );
+
+    const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
+    res.json(rows[0]);
   })
 );
 

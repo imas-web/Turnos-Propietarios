@@ -10,9 +10,18 @@ export function requireAuth(req, res, next) {
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret');
-    req.admin = payload;
+    req.usuario = payload;
     next();
   } catch {
     return res.status(401).json({ error: 'Token invalido o expirado' });
   }
+}
+
+export function requireRol(rol) {
+  return (req, res, next) => {
+    if (req.usuario?.rol !== rol) {
+      return res.status(403).json({ error: 'No tenes permiso para esta accion' });
+    }
+    next();
+  };
 }

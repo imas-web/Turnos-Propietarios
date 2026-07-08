@@ -33,11 +33,8 @@ export const api = {
   },
   crearTurno: (token, data) => request('/turnos', { method: 'POST', body: data, token }),
   cancelarTurno: (token, id) => request(`/turnos/${id}/cancelar`, { method: 'POST', token }),
-  reenviarTurno: (token, id) => request(`/turnos/${id}/reenviar`, { method: 'POST', token }),
   eliminarTurno: (token, id) => request(`/turnos/${id}`, { method: 'DELETE', token }),
-
-  obtenerTurnoPorToken: (turnoToken) => request(`/confirmacion/${turnoToken}`),
-  confirmarTurno: (turnoToken) => request(`/confirmacion/${turnoToken}/confirmar`, { method: 'POST' }),
-  rechazarTurno: (turnoToken, motivo) =>
-    request(`/confirmacion/${turnoToken}/rechazar`, { method: 'POST', body: { motivo } }),
+  confirmarTurno: (token, id) => request(`/turnos/${id}/confirmar`, { method: 'POST', token }),
+  rechazarTurno: (token, id, motivo) =>
+    request(`/turnos/${id}/rechazar`, { method: 'POST', body: { motivo }, token }),
 };

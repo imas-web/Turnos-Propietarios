@@ -218,35 +218,6 @@ th {
   max-width: 360px;
 }
 
-.confirmar-shell {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-}
-
-.confirmar-card {
-  width: 100%;
-  max-width: 480px;
-  text-align: center;
-}
-
-.link-box {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  font-size: 0.78rem;
-}
-
-.link-box input {
-  flex: 1;
-  padding: 0.35rem 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  color: var(--color-muted);
-}
-
 .actions-row {
   display: flex;
   gap: 0.5rem;

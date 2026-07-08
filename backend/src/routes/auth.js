@@ -14,19 +14,19 @@ router.post(
       return res.status(400).json({ error: 'Usuario y contrasena son requeridos' });
     }
 
-    const { rows } = await pool.query('SELECT * FROM admins WHERE usuario = $1', [usuario]);
-    const admin = rows[0];
-    if (!admin || !bcrypt.compareSync(password, admin.password_hash)) {
+    const { rows } = await pool.query('SELECT * FROM usuarios WHERE usuario = $1', [usuario]);
+    const user = rows[0];
+    if (!user || !bcrypt.compareSync(password, user.password_hash)) {
       return res.status(401).json({ error: 'Credenciales invalidas' });
     }
 
     const token = jwt.sign(
-      { sub: admin.id, usuario: admin.usuario },
+      { sub: user.id, usuario: user.usuario, rol: user.rol, nombre: user.nombre },
       process.env.JWT_SECRET || 'dev-secret',
       { expiresIn: '12h' }
     );
 
-    res.json({ token, usuario: admin.usuario });
+    res.json({ token, usuario: user.usuario, rol: user.rol, nombre: user.nombre });
   })
 );
 
