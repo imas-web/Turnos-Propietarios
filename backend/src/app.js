@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { ensureInit } from './db.js';
 import authRoutes from './routes/auth.js';
 import propietariosRoutes from './routes/propietarios.js';
 import turnosRoutes from './routes/turnos.js';
@@ -10,6 +11,10 @@ export function createApp() {
 
   app.use(cors());
   app.use(express.json());
+
+  app.use((req, res, next) => {
+    ensureInit().then(() => next(), next);
+  });
 
   app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 

@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { db } from '../db.js';
+import { pool } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { generarToken } from '../utils/token.js';
 import { enviarCorreoConfirmacion } from '../utils/mailer.js';
+import { ah } from '../utils/asyncHandler.js';
 
 const router = Router();
 
@@ -20,147 +21,188 @@ function linkConfirmacion(token) {
 
 router.use(requireAuth);
 
-router.get('/', (req, res) => {
-  const { estado, propietario_id, desde, hasta } = req.query;
-  const condiciones = [];
-  const params = [];
+router.get(
+  '/',
+  ah(async (req, res) => {
+    const { estado, propietario_id, desde, hasta } = req.query;
+    const condiciones = [];
+    const params = [];
 
-  if (estado) {
-    condiciones.push('t.estado = ?');
-    params.push(estado);
-  }
-  if (propietario_id) {
-    condiciones.push('t.propietario_id = ?');
-    params.push(propietario_id);
-  }
-  if (desde) {
-    condiciones.push('t.fecha >= ?');
-    params.push(desde);
-  }
-  if (hasta) {
-    condiciones.push('t.fecha <= ?');
-    params.push(hasta);
-  }
+    if (estado) {
+      params.push(estado);
+      condiciones.push(`t.estado = $${params.length}`);
+    }
+    if (propietario_id) {
+      params.push(propietario_id);
+      condiciones.push(`t.propietario_id = $${params.length}`);
+    }
+    if (desde) {
+      params.push(desde);
+      condiciones.push(`t.fecha >= $${params.length}`);
+    }
+    if (hasta) {
+      params.push(hasta);
+      condiciones.push(`t.fecha <= $${params.length}`);
+    }
 
-  const where = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '';
-  const turnos = db
-    .prepare(`${SELECT_TURNO} ${where} ORDER BY t.fecha ASC, t.hora_inicio ASC`)
-    .all(...params);
+    const where = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '';
+    const { rows } = await pool.query(
+      `${SELECT_TURNO} ${where} ORDER BY t.fecha ASC, t.hora_inicio ASC`,
+      params
+    );
 
-  res.json(
-    turnos.map((t) => ({
-      ...t,
-      link_confirmacion: t.estado === 'pendiente' ? linkConfirmacion(t.token) : null,
-    }))
-  );
-});
+    res.json(
+      rows.map((t) => ({
+        ...t,
+        link_confirmacion: t.estado === 'pendiente' ? linkConfirmacion(t.token) : null,
+      }))
+    );
+  })
+);
 
-router.get('/:id', (req, res) => {
-  const turno = db.prepare(`${SELECT_TURNO} WHERE t.id = ?`).get(req.params.id);
-  if (!turno) return res.status(404).json({ error: 'Turno no encontrado' });
-  res.json({ ...turno, link_confirmacion: linkConfirmacion(turno.token) });
-});
+router.get(
+  '/:id',
+  ah(async (req, res) => {
+    const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
+    const turno = rows[0];
+    if (!turno) return res.status(404).json({ error: 'Turno no encontrado' });
+    res.json({ ...turno, link_confirmacion: linkConfirmacion(turno.token) });
+  })
+);
 
-router.post('/', async (req, res) => {
-  const { propietario_id, titulo, descripcion, fecha, hora_inicio, hora_fin } =
-    req.body || {};
+router.post(
+  '/',
+  ah(async (req, res) => {
+    const { propietario_id, titulo, descripcion, fecha, hora_inicio, hora_fin } =
+      req.body || {};
 
-  if (!propietario_id || !titulo || !fecha || !hora_inicio || !hora_fin) {
-    return res.status(400).json({
-      error: 'propietario_id, titulo, fecha, hora_inicio y hora_fin son requeridos',
-    });
-  }
+    if (!propietario_id || !titulo || !fecha || !hora_inicio || !hora_fin) {
+      return res.status(400).json({
+        error: 'propietario_id, titulo, fecha, hora_inicio y hora_fin son requeridos',
+      });
+    }
 
-  const propietario = db
-    .prepare('SELECT * FROM propietarios WHERE id = ?')
-    .get(propietario_id);
-  if (!propietario) return res.status(404).json({ error: 'Propietario no encontrado' });
+    const { rows: propietarioRows } = await pool.query(
+      'SELECT * FROM propietarios WHERE id = $1',
+      [propietario_id]
+    );
+    const propietario = propietarioRows[0];
+    if (!propietario) return res.status(404).json({ error: 'Propietario no encontrado' });
 
-  const token = generarToken();
-  const info = db
-    .prepare(
+    const token = generarToken();
+    const { rows: insertedRows } = await pool.query(
       `INSERT INTO turnos
         (propietario_id, titulo, descripcion, fecha, hora_inicio, hora_fin, token)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    )
-    .run(propietario_id, titulo, descripcion || null, fecha, hora_inicio, hora_fin, token);
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id`,
+      [propietario_id, titulo, descripcion || null, fecha, hora_inicio, hora_fin, token]
+    );
 
-  const turno = db.prepare(`${SELECT_TURNO} WHERE t.id = ?`).get(info.lastInsertRowid);
-  const link = linkConfirmacion(token);
+    const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [
+      insertedRows[0].id,
+    ]);
+    const turno = rows[0];
+    const link = linkConfirmacion(token);
 
-  const envio = await enviarCorreoConfirmacion({
-    to: propietario.email,
-    nombre: propietario.nombre,
-    turno,
-    link,
-  });
+    const envio = await enviarCorreoConfirmacion({
+      to: propietario.email,
+      nombre: propietario.nombre,
+      turno,
+      link,
+    });
 
-  res.status(201).json({ ...turno, link_confirmacion: link, correo_enviado: envio.enviado });
-});
+    res.status(201).json({ ...turno, link_confirmacion: link, correo_enviado: envio.enviado });
+  })
+);
 
-router.put('/:id', (req, res) => {
-  const existing = db.prepare('SELECT * FROM turnos WHERE id = ?').get(req.params.id);
-  if (!existing) return res.status(404).json({ error: 'Turno no encontrado' });
+router.put(
+  '/:id',
+  ah(async (req, res) => {
+    const { rows: existingRows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [
+      req.params.id,
+    ]);
+    const existing = existingRows[0];
+    if (!existing) return res.status(404).json({ error: 'Turno no encontrado' });
 
-  const { titulo, descripcion, fecha, hora_inicio, hora_fin } = req.body || {};
-  db.prepare(
-    `UPDATE turnos
-     SET titulo = ?, descripcion = ?, fecha = ?, hora_inicio = ?, hora_fin = ?
-     WHERE id = ?`
-  ).run(
-    titulo ?? existing.titulo,
-    descripcion ?? existing.descripcion,
-    fecha ?? existing.fecha,
-    hora_inicio ?? existing.hora_inicio,
-    hora_fin ?? existing.hora_fin,
-    req.params.id
-  );
+    const { titulo, descripcion, fecha, hora_inicio, hora_fin } = req.body || {};
+    await pool.query(
+      `UPDATE turnos
+       SET titulo = $1, descripcion = $2, fecha = $3, hora_inicio = $4, hora_fin = $5
+       WHERE id = $6`,
+      [
+        titulo ?? existing.titulo,
+        descripcion ?? existing.descripcion,
+        fecha ?? existing.fecha,
+        hora_inicio ?? existing.hora_inicio,
+        hora_fin ?? existing.hora_fin,
+        req.params.id,
+      ]
+    );
 
-  const turno = db.prepare(`${SELECT_TURNO} WHERE t.id = ?`).get(req.params.id);
-  res.json(turno);
-});
+    const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
+    res.json(rows[0]);
+  })
+);
 
-router.post('/:id/cancelar', (req, res) => {
-  const existing = db.prepare('SELECT * FROM turnos WHERE id = ?').get(req.params.id);
-  if (!existing) return res.status(404).json({ error: 'Turno no encontrado' });
+router.post(
+  '/:id/cancelar',
+  ah(async (req, res) => {
+    const { rows: existingRows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [
+      req.params.id,
+    ]);
+    if (!existingRows[0]) return res.status(404).json({ error: 'Turno no encontrado' });
 
-  db.prepare(
-    "UPDATE turnos SET estado = 'cancelado', respondido_en = datetime('now') WHERE id = ?"
-  ).run(req.params.id);
+    await pool.query(
+      "UPDATE turnos SET estado = 'cancelado', respondido_en = NOW() WHERE id = $1",
+      [req.params.id]
+    );
 
-  const turno = db.prepare(`${SELECT_TURNO} WHERE t.id = ?`).get(req.params.id);
-  res.json(turno);
-});
+    const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
+    res.json(rows[0]);
+  })
+);
 
 // Reenvia la confirmacion generando un nuevo token, util si el turno
 // fue rechazado y se quiere reintentar, o si el link anterior se perdio.
-router.post('/:id/reenviar', async (req, res) => {
-  const existing = db.prepare(`${SELECT_TURNO} WHERE t.id = ?`).get(req.params.id);
-  if (!existing) return res.status(404).json({ error: 'Turno no encontrado' });
+router.post(
+  '/:id/reenviar',
+  ah(async (req, res) => {
+    const { rows: existingRows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [
+      req.params.id,
+    ]);
+    const existing = existingRows[0];
+    if (!existing) return res.status(404).json({ error: 'Turno no encontrado' });
 
-  const token = generarToken();
-  db.prepare(
-    "UPDATE turnos SET token = ?, estado = 'pendiente', respondido_en = NULL, motivo_rechazo = NULL WHERE id = ?"
-  ).run(token, req.params.id);
+    const token = generarToken();
+    await pool.query(
+      `UPDATE turnos
+       SET token = $1, estado = 'pendiente', respondido_en = NULL, motivo_rechazo = NULL
+       WHERE id = $2`,
+      [token, req.params.id]
+    );
 
-  const link = linkConfirmacion(token);
-  const envio = await enviarCorreoConfirmacion({
-    to: existing.propietario_email,
-    nombre: existing.propietario_nombre,
-    turno: existing,
-    link,
-  });
+    const link = linkConfirmacion(token);
+    const envio = await enviarCorreoConfirmacion({
+      to: existing.propietario_email,
+      nombre: existing.propietario_nombre,
+      turno: existing,
+      link,
+    });
 
-  const turno = db.prepare(`${SELECT_TURNO} WHERE t.id = ?`).get(req.params.id);
-  res.json({ ...turno, link_confirmacion: link, correo_enviado: envio.enviado });
-});
+    const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
+    res.json({ ...rows[0], link_confirmacion: link, correo_enviado: envio.enviado });
+  })
+);
 
-router.delete('/:id', (req, res) => {
-  const existing = db.prepare('SELECT * FROM turnos WHERE id = ?').get(req.params.id);
-  if (!existing) return res.status(404).json({ error: 'Turno no encontrado' });
-
-  db.prepare('DELETE FROM turnos WHERE id = ?').run(req.params.id);
-  res.status(204).send();
-});
+router.delete(
+  '/:id',
+  ah(async (req, res) => {
+    const { rows } = await pool.query('DELETE FROM turnos WHERE id = $1 RETURNING id', [
+      req.params.id,
+    ]);
+    if (!rows[0]) return res.status(404).json({ error: 'Turno no encontrado' });
+    res.status(204).send();
+  })
+);
 
 export default router;

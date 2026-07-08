@@ -29,12 +29,13 @@ frontend/   Panel de administración (React + Vite)
 ## Requisitos
 
 - Node.js 18 o superior.
+- Una base de datos Postgres (local, o gratuita en la nube: Neon, Vercel Postgres, Supabase, etc.).
 
 ## Backend
 
 ```bash
 cd backend
-cp .env.example .env
+cp .env.example .env   # completar DATABASE_URL con tu conexion a Postgres
 npm install
 npm run seed   # crea el usuario admin y datos de ejemplo (opcional)
 npm run dev    # http://localhost:4000
@@ -74,7 +75,38 @@ En desarrollo, Vite redirige `/api/*` hacia `http://localhost:4000` (ver
 
 Ver `backend/.env.example`. Lo más relevante:
 
+- `DATABASE_URL`: cadena de conexión a Postgres.
 - `JWT_SECRET`: secreto para firmar los tokens de sesión del administrador.
 - `ADMIN_USER` / `ADMIN_PASSWORD`: credenciales del administrador inicial.
 - `FRONTEND_URL`: usada para construir el link público de confirmación.
 - `SMTP_*`: opcional, para enviar el link de confirmación por correo.
+
+## Deploy en Vercel
+
+El repo está preparado para desplegarse como **dos proyectos de Vercel separados**
+(uno para `backend`, otro para `frontend`), cada uno con su propia URL pública.
+
+### 1. Backend
+
+1. En Vercel, "Add New... → Project", importá este repo y elegí la carpeta
+   `backend` como raíz del proyecto ("Root Directory").
+2. Antes de desplegar, andá a la pestaña **Storage** del proyecto y creá una
+   base **Postgres** (Neon, integrada en Vercel). Esto agrega automáticamente
+   una variable `DATABASE_URL` (o `POSTGRES_URL`) al proyecto.
+3. En **Settings → Environment Variables**, agregá también:
+   - `JWT_SECRET` (cualquier cadena larga y aleatoria)
+   - `ADMIN_USER` / `ADMIN_PASSWORD` (credenciales reales del administrador)
+   - `FRONTEND_URL` (la URL del proyecto de frontend, se completa/actualiza
+     después del paso 2)
+4. Desplegá. Las tablas y el usuario admin se crean solos en el primer pedido
+   (no hace falta correr ninguna migración a mano).
+
+### 2. Frontend
+
+1. "Add New... → Project", mismo repo, raíz `frontend`.
+2. En **Environment Variables**, agregá `VITE_API_URL` con la URL pública del
+   backend desplegado en el paso anterior (por ejemplo
+   `https://tu-backend.vercel.app/api`).
+3. Desplegá. Una vez que tengas la URL del frontend, volvé al proyecto del
+   backend y actualizá `FRONTEND_URL` con esa URL (para que los links de
+   confirmación apunten al lugar correcto), y volvé a desplegar el backend.

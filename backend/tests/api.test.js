@@ -1,21 +1,15 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
 
-process.env.DB_PATH = './data/test-turnos.db';
+process.env.DATABASE_URL =
+  process.env.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/turnos_test';
 process.env.JWT_SECRET = 'test-secret';
 process.env.ADMIN_USER = 'admin';
 process.env.ADMIN_PASSWORD = 'admin123';
 process.env.FRONTEND_URL = 'http://localhost:5173';
 
-for (const suffix of ['', '-wal', '-shm']) {
-  const f = `${process.env.DB_PATH}${suffix}`;
-  if (fs.existsSync(f)) fs.rmSync(f);
-}
-
 const { createApp } = await import('../src/app.js');
-const { db } = await import('../src/db.js');
+const { pool, ensureInit } = await import('../src/db.js');
 const request = (await import('supertest')).default;
 
 const app = createApp();
@@ -23,18 +17,17 @@ let adminToken;
 let propietarioId;
 
 before(async () => {
+  await ensureInit();
+  await pool.query('TRUNCATE turnos, propietarios RESTART IDENTITY CASCADE');
+
   const res = await request(app)
     .post('/api/auth/login')
     .send({ usuario: 'admin', password: 'admin123' });
   adminToken = res.body.token;
 });
 
-after(() => {
-  db.close();
-  for (const suffix of ['', '-wal', '-shm']) {
-    const f = `${process.env.DB_PATH}${suffix}`;
-    if (fs.existsSync(f)) fs.rmSync(f);
-  }
+after(async () => {
+  await pool.end();
 });
 
 test('rechaza login con credenciales invalidas', async () => {

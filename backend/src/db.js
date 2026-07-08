@@ -1,38 +1,36 @@
-import Database from 'better-sqlite3';
-import fs from 'node:fs';
-import path from 'node:path';
+import pg from 'pg';
 import bcrypt from 'bcryptjs';
 
-const dbPath = process.env.DB_PATH || './data/turnos.db';
-const dir = path.dirname(dbPath);
-if (dir && dir !== '.' && !fs.existsSync(dir)) {
-  fs.mkdirSync(dir, { recursive: true });
-}
+const { Pool } = pg;
 
-export const db = new Database(dbPath);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+const isLocal = /localhost|127\.0\.0\.1/.test(connectionString || '');
 
-db.exec(`
+export const pool = new Pool({
+  connectionString,
+  ssl: isLocal ? false : { rejectUnauthorized: false },
+});
+
+const SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS admins (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     usuario TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
-    creado_en TEXT NOT NULL DEFAULT (datetime('now'))
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
 
   CREATE TABLE IF NOT EXISTS propietarios (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     nombre TEXT NOT NULL,
     email TEXT NOT NULL,
     telefono TEXT,
     unidad TEXT NOT NULL,
     activo INTEGER NOT NULL DEFAULT 1,
-    creado_en TEXT NOT NULL DEFAULT (datetime('now'))
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
 
   CREATE TABLE IF NOT EXISTS turnos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     propietario_id INTEGER NOT NULL REFERENCES propietarios(id) ON DELETE CASCADE,
     titulo TEXT NOT NULL,
     descripcion TEXT,
@@ -42,28 +40,39 @@ db.exec(`
     estado TEXT NOT NULL DEFAULT 'pendiente'
       CHECK (estado IN ('pendiente', 'confirmado', 'rechazado', 'cancelado')),
     token TEXT UNIQUE NOT NULL,
-    token_expira TEXT,
-    respondido_en TEXT,
+    token_expira TIMESTAMPTZ,
+    respondido_en TIMESTAMPTZ,
     motivo_rechazo TEXT,
-    creado_en TEXT NOT NULL DEFAULT (datetime('now'))
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
 
   CREATE INDEX IF NOT EXISTS idx_turnos_propietario ON turnos(propietario_id);
   CREATE INDEX IF NOT EXISTS idx_turnos_fecha ON turnos(fecha);
   CREATE INDEX IF NOT EXISTS idx_turnos_token ON turnos(token);
-`);
+`;
 
-function ensureAdmin() {
+async function ensureAdmin() {
   const usuario = process.env.ADMIN_USER || 'admin';
   const password = process.env.ADMIN_PASSWORD || 'admin123';
-  const existing = db.prepare('SELECT id FROM admins WHERE usuario = ?').get(usuario);
-  if (!existing) {
+  const { rows } = await pool.query('SELECT id FROM admins WHERE usuario = $1', [usuario]);
+  if (rows.length === 0) {
     const hash = bcrypt.hashSync(password, 10);
-    db.prepare('INSERT INTO admins (usuario, password_hash) VALUES (?, ?)').run(usuario, hash);
+    await pool.query('INSERT INTO admins (usuario, password_hash) VALUES ($1, $2)', [
+      usuario,
+      hash,
+    ]);
     console.log(`Usuario administrador creado: ${usuario}`);
   }
 }
 
-ensureAdmin();
+let initPromise;
 
-export default db;
+// Crea las tablas y el admin inicial la primera vez que se necesita la base.
+// En serverless (Vercel) esto corre una vez por instancia "cold start" y
+// despues queda memoizado durante la vida de esa instancia.
+export function ensureInit() {
+  if (!initPromise) {
+    initPromise = pool.query(SCHEMA_SQL).then(() => ensureAdmin());
+  }
+  return initPromise;
+}
