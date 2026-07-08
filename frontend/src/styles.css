@@ -45,20 +45,24 @@ input, select, textarea {
 .topbar {
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
-  padding: 0.85rem 1.5rem;
+  padding: 0.75rem 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .topbar h1 {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   margin: 0;
 }
 
 .topbar nav {
   display: flex;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
 }
 
 .topbar nav a, .topbar nav button {
@@ -81,6 +85,19 @@ input, select, textarea {
   margin: 0 auto;
   padding: 1.5rem;
   width: 100%;
+}
+
+.container-angosto {
+  max-width: 640px;
+  padding: 1rem;
+}
+
+.btn-ancho {
+  width: 100%;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+  padding: 0.7rem 1rem;
+  font-size: 1rem;
 }
 
 .card {
@@ -226,4 +243,111 @@ th {
 
 .muted {
   color: var(--color-muted);
+}
+
+.agenda-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.agenda-dia {
+  margin-top: 1.25rem;
+}
+
+.agenda-dia:first-of-type {
+  margin-top: 0.5rem;
+}
+
+.agenda-fecha {
+  font-size: 0.85rem;
+  text-transform: capitalize;
+  color: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.4rem;
+  margin: 0 0 0.6rem;
+}
+
+.agenda-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.85rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.agenda-item:last-child {
+  border-bottom: none;
+}
+
+.agenda-hora {
+  font-weight: 600;
+  font-size: 0.9rem;
+  min-width: 100px;
+}
+
+.agenda-datos {
+  flex: 1;
+  min-width: 140px;
+  font-size: 0.9rem;
+}
+
+/* Vista de Diagnotest: sidebar de pendientes + agenda general.
+   Mobile-first: apiladas verticalmente; desktop: sidebar fija a la izquierda. */
+.confirmar-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.confirmar-sidebar {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: 1rem;
+}
+
+.confirmar-sidebar h2 {
+  margin-top: 0;
+}
+
+.pendiente-item {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.pendiente-item input {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.confirmar-main {
+  flex: 1;
+}
+
+@media (min-width: 900px) {
+  .confirmar-layout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .confirmar-sidebar {
+    width: 320px;
+    flex-shrink: 0;
+    border-bottom: none;
+    border-right: 1px solid var(--color-border);
+    min-height: calc(100vh - 64px);
+    overflow-y: auto;
+    position: sticky;
+    top: 0;
+  }
 }

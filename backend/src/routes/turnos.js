@@ -5,46 +5,109 @@ import { ah } from '../utils/asyncHandler.js';
 
 const router = Router();
 
-const SELECT_TURNO = `
-  SELECT t.*, p.nombre AS propietario_nombre, p.email AS propietario_email,
-         p.unidad AS propietario_unidad
-  FROM turnos t
-  JOIN propietarios p ON p.id = t.propietario_id
-`;
+const MINUTOS_INICIO_LABORAL = 8 * 60;
+const MINUTOS_FIN_LABORAL = 20 * 60;
+const PASO_MINUTOS = 15;
+const ZONA_HORARIA = 'America/Argentina/Buenos_Aires';
+
+function generarSlots() {
+  const slots = [];
+  for (let min = MINUTOS_INICIO_LABORAL; min < MINUTOS_FIN_LABORAL; min += PASO_MINUTOS) {
+    slots.push(minutosAHora(min));
+  }
+  return slots;
+}
+
+function minutosAHora(minutos) {
+  const h = String(Math.floor(minutos / 60) % 24).padStart(2, '0');
+  const m = String(minutos % 60).padStart(2, '0');
+  return `${h}:${m}`;
+}
+
+function horaAMinutos(horaHHMM) {
+  const [h, m] = horaHHMM.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function sumarMinutos(horaHHMM, minutos) {
+  return minutosAHora(horaAMinutos(horaHHMM) + minutos);
+}
+
+function fechaYHoraActualEnArgentina() {
+  const formateador = new Intl.DateTimeFormat('en-CA', {
+    timeZone: ZONA_HORARIA,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  const partes = Object.fromEntries(
+    formateador.formatToParts(new Date()).map((p) => [p.type, p.value])
+  );
+  return {
+    fecha: `${partes.year}-${partes.month}-${partes.day}`,
+    minutos: Number(partes.hour) * 60 + Number(partes.minute),
+  };
+}
 
 router.use(requireAuth);
 
 router.get(
+  '/disponibilidad',
+  requireRol('extraccionista'),
+  ah(async (req, res) => {
+    const { fecha } = req.query;
+    if (!fecha) return res.status(400).json({ error: 'fecha es requerida' });
+
+    const { rows } = await pool.query(
+      `SELECT hora_inicio FROM turnos
+       WHERE creado_por = $1 AND fecha = $2 AND estado IN ('pendiente', 'confirmado')`,
+      [req.usuario.sub, fecha]
+    );
+    const ocupados = new Set(rows.map((r) => r.hora_inicio));
+
+    const ahora = fechaYHoraActualEnArgentina();
+    const esHoy = fecha === ahora.fecha;
+
+    const slots = generarSlots().filter((slot) => {
+      if (ocupados.has(slot)) return false;
+      if (esHoy && horaAMinutos(slot) <= ahora.minutos) return false;
+      return true;
+    });
+
+    res.json({ slots });
+  })
+);
+
+router.get(
   '/',
   ah(async (req, res) => {
-    const { estado, propietario_id, desde, hasta } = req.query;
+    const { estado, desde, hasta } = req.query;
     const condiciones = [];
     const params = [];
 
     if (req.usuario.rol === 'extraccionista') {
       params.push(req.usuario.sub);
-      condiciones.push(`t.creado_por = $${params.length}`);
+      condiciones.push(`creado_por = $${params.length}`);
     }
     if (estado) {
       params.push(estado);
-      condiciones.push(`t.estado = $${params.length}`);
-    }
-    if (propietario_id) {
-      params.push(propietario_id);
-      condiciones.push(`t.propietario_id = $${params.length}`);
+      condiciones.push(`estado = $${params.length}`);
     }
     if (desde) {
       params.push(desde);
-      condiciones.push(`t.fecha >= $${params.length}`);
+      condiciones.push(`fecha >= $${params.length}`);
     }
     if (hasta) {
       params.push(hasta);
-      condiciones.push(`t.fecha <= $${params.length}`);
+      condiciones.push(`fecha <= $${params.length}`);
     }
 
     const where = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '';
     const { rows } = await pool.query(
-      `${SELECT_TURNO} ${where} ORDER BY t.fecha ASC, t.hora_inicio ASC`,
+      `SELECT * FROM turnos ${where} ORDER BY fecha ASC, hora_inicio ASC`,
       params
     );
 
@@ -55,7 +118,7 @@ router.get(
 router.get(
   '/:id',
   ah(async (req, res) => {
-    const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
+    const { rows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [req.params.id]);
     const turno = rows[0];
     if (!turno) return res.status(404).json({ error: 'Turno no encontrado' });
     if (req.usuario.rol === 'extraccionista' && turno.creado_por !== req.usuario.sub) {
@@ -69,43 +132,37 @@ router.post(
   '/',
   requireRol('extraccionista'),
   ah(async (req, res) => {
-    const { propietario_id, titulo, descripcion, fecha, hora_inicio, hora_fin } =
-      req.body || {};
+    const { tutor, telefono, fecha, hora_inicio } = req.body || {};
 
-    if (!propietario_id || !titulo || !fecha || !hora_inicio || !hora_fin) {
+    if (!tutor || !telefono || !fecha || !hora_inicio) {
       return res.status(400).json({
-        error: 'propietario_id, titulo, fecha, hora_inicio y hora_fin son requeridos',
+        error: 'tutor, telefono, fecha y hora_inicio son requeridos',
       });
     }
-
-    const { rows: propietarioRows } = await pool.query(
-      'SELECT * FROM propietarios WHERE id = $1 AND creado_por = $2',
-      [propietario_id, req.usuario.sub]
-    );
-    if (!propietarioRows[0]) {
-      return res.status(404).json({ error: 'Propietario no encontrado' });
+    if (!generarSlots().includes(hora_inicio)) {
+      return res.status(400).json({ error: 'Horario invalido' });
     }
 
-    const { rows: insertedRows } = await pool.query(
-      `INSERT INTO turnos
-        (propietario_id, titulo, descripcion, fecha, hora_inicio, hora_fin, creado_por)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id`,
-      [
-        propietario_id,
-        titulo,
-        descripcion || null,
-        fecha,
-        hora_inicio,
-        hora_fin,
-        req.usuario.sub,
-      ]
-    );
+    const hora_fin = sumarMinutos(hora_inicio, PASO_MINUTOS);
 
-    const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [
-      insertedRows[0].id,
-    ]);
-    res.status(201).json(rows[0]);
+    try {
+      const { rows: insertedRows } = await pool.query(
+        `INSERT INTO turnos (tutor, telefono, fecha, hora_inicio, hora_fin, creado_por)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id`,
+        [tutor, telefono, fecha, hora_inicio, hora_fin, req.usuario.sub]
+      );
+
+      const { rows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [
+        insertedRows[0].id,
+      ]);
+      res.status(201).json(rows[0]);
+    } catch (err) {
+      if (err.code === '23505') {
+        return res.status(409).json({ error: 'Ese horario ya esta ocupado' });
+      }
+      throw err;
+    }
   })
 );
 
@@ -120,22 +177,32 @@ router.put(
     const existing = existingRows[0];
     if (!existing) return res.status(404).json({ error: 'Turno no encontrado' });
 
-    const { titulo, descripcion, fecha, hora_inicio, hora_fin } = req.body || {};
-    await pool.query(
-      `UPDATE turnos
-       SET titulo = $1, descripcion = $2, fecha = $3, hora_inicio = $4, hora_fin = $5
-       WHERE id = $6`,
-      [
-        titulo ?? existing.titulo,
-        descripcion ?? existing.descripcion,
-        fecha ?? existing.fecha,
-        hora_inicio ?? existing.hora_inicio,
-        hora_fin ?? existing.hora_fin,
-        req.params.id,
-      ]
-    );
+    const { tutor, telefono, fecha, hora_inicio } = req.body || {};
+    const nuevaHoraInicio = hora_inicio ?? existing.hora_inicio;
+    const nuevaHoraFin = hora_inicio ? sumarMinutos(hora_inicio, PASO_MINUTOS) : existing.hora_fin;
 
-    const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
+    try {
+      await pool.query(
+        `UPDATE turnos
+         SET tutor = $1, telefono = $2, fecha = $3, hora_inicio = $4, hora_fin = $5
+         WHERE id = $6`,
+        [
+          tutor ?? existing.tutor,
+          telefono ?? existing.telefono,
+          fecha ?? existing.fecha,
+          nuevaHoraInicio,
+          nuevaHoraFin,
+          req.params.id,
+        ]
+      );
+    } catch (err) {
+      if (err.code === '23505') {
+        return res.status(409).json({ error: 'Ese horario ya esta ocupado' });
+      }
+      throw err;
+    }
+
+    const { rows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [req.params.id]);
     res.json(rows[0]);
   })
 );
@@ -155,7 +222,7 @@ router.post(
       [req.params.id]
     );
 
-    const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
+    const { rows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [req.params.id]);
     res.json(rows[0]);
   })
 );
@@ -173,8 +240,8 @@ router.delete(
   })
 );
 
-// Confirmacion/rechazo interno: solo el rol "diagnotest"
-// puede resolver turnos pendientes, sin importar quien los haya cargado.
+// Confirmacion/rechazo interno: solo el rol "diagnotest" puede resolver
+// turnos pendientes, sin importar quien los haya cargado.
 router.post(
   '/:id/confirmar',
   requireRol('diagnotest'),
@@ -193,7 +260,7 @@ router.post(
       [req.params.id]
     );
 
-    const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
+    const { rows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [req.params.id]);
     res.json(rows[0]);
   })
 );
@@ -219,7 +286,7 @@ router.post(
       [motivo || null, req.params.id]
     );
 
-    const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
+    const { rows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [req.params.id]);
     res.json(rows[0]);
   })
 );

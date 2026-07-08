@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import { ensureInit } from './db.js';
 import authRoutes from './routes/auth.js';
-import propietariosRoutes from './routes/propietarios.js';
 import turnosRoutes from './routes/turnos.js';
 import usuariosRoutes from './routes/usuarios.js';
 
@@ -19,7 +18,6 @@ export function createApp() {
   app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
   app.use('/api/auth', authRoutes);
-  app.use('/api/propietarios', propietariosRoutes);
   app.use('/api/turnos', turnosRoutes);
   app.use('/api/usuarios', usuariosRoutes);
 

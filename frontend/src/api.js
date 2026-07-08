@@ -22,15 +22,12 @@ async function request(path, { method = 'GET', body, token } = {}) {
 export const api = {
   login: (usuario, password) => request('/auth/login', { method: 'POST', body: { usuario, password } }),
 
-  listarPropietarios: (token) => request('/propietarios', { token }),
-  crearPropietario: (token, data) => request('/propietarios', { method: 'POST', body: data, token }),
-  actualizarPropietario: (token, id, data) => request(`/propietarios/${id}`, { method: 'PUT', body: data, token }),
-  eliminarPropietario: (token, id) => request(`/propietarios/${id}`, { method: 'DELETE', token }),
-
   listarTurnos: (token, params = {}) => {
     const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString();
     return request(`/turnos${query ? `?${query}` : ''}`, { token });
   },
+  obtenerDisponibilidad: (token, fecha) =>
+    request(`/turnos/disponibilidad?fecha=${fecha}`, { token }),
   crearTurno: (token, data) => request('/turnos', { method: 'POST', body: data, token }),
   cancelarTurno: (token, id) => request(`/turnos/${id}/cancelar`, { method: 'POST', token }),
   eliminarTurno: (token, id) => request(`/turnos/${id}`, { method: 'DELETE', token }),

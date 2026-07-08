@@ -15,14 +15,9 @@ export default function TopBar() {
       <h1>Turnos Propietarios</h1>
       <nav>
         {rol === 'extraccionista' && (
-          <>
-            <NavLink to="/turnos" className={({ isActive }) => (isActive ? 'active' : '')}>
-              Turnos
-            </NavLink>
-            <NavLink to="/propietarios" className={({ isActive }) => (isActive ? 'active' : '')}>
-              Propietarios
-            </NavLink>
-          </>
+          <NavLink to="/turnos" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Turnos
+          </NavLink>
         )}
         {rol === 'diagnotest' && (
           <NavLink to="/confirmar" className={({ isActive }) => (isActive ? 'active' : '')}>

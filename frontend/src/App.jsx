@@ -2,7 +2,6 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.jsx';
 import TopBar from './components/TopBar.jsx';
 import Login from './pages/Login.jsx';
-import Propietarios from './pages/Propietarios.jsx';
 import Turnos from './pages/Turnos.jsx';
 import ConfirmarTurnos from './pages/ConfirmarTurnos.jsx';
 import Usuarios from './pages/Usuarios.jsx';
@@ -47,14 +46,6 @@ export default function App() {
                   element={
                     <RutaPorRol rol="extraccionista">
                       <Turnos />
-                    </RutaPorRol>
-                  }
-                />
-                <Route
-                  path="/propietarios"
-                  element={
-                    <RutaPorRol rol="extraccionista">
-                      <Propietarios />
                     </RutaPorRol>
                   }
                 />

@@ -2,14 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
-const FORM_VACIO = {
-  propietario_id: '',
-  titulo: '',
-  descripcion: '',
-  fecha: '',
-  hora_inicio: '',
-  hora_fin: '',
-};
+const FORM_VACIO = { tutor: '', telefono: '', fecha: '', hora_inicio: '' };
 
 const ETIQUETAS_ESTADO = {
   pendiente: 'Pendiente',
@@ -18,20 +11,41 @@ const ETIQUETAS_ESTADO = {
   cancelado: 'Cancelado',
 };
 
+function formatearFecha(fechaStr) {
+  const [anio, mes, dia] = fechaStr.split('-').map(Number);
+  const fecha = new Date(anio, mes - 1, dia);
+  const texto = fecha.toLocaleDateString('es-AR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+function agruparPorFecha(turnos) {
+  const grupos = [];
+  for (const turno of turnos) {
+    let grupo = grupos.find((g) => g.fecha === turno.fecha);
+    if (!grupo) {
+      grupo = { fecha: turno.fecha, turnos: [] };
+      grupos.push(grupo);
+    }
+    grupo.turnos.push(turno);
+  }
+  return grupos;
+}
+
 export default function Turnos() {
   const { token } = useAuth();
   const [turnos, setTurnos] = useState([]);
-  const [propietarios, setPropietarios] = useState([]);
+  const [slots, setSlots] = useState([]);
   const [form, setForm] = useState(FORM_VACIO);
+  const [mostrarForm, setMostrarForm] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState('');
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(true);
-
-  const cargarPropietarios = async () => {
-    const data = await api.listarPropietarios(token);
-    setPropietarios(data);
-  };
+  const [cargandoSlots, setCargandoSlots] = useState(false);
 
   const cargarTurnos = async (estado = filtroEstado) => {
     setCargando(true);
@@ -46,17 +60,44 @@ export default function Turnos() {
   };
 
   useEffect(() => {
-    cargarPropietarios().catch((err) => setError(err.message));
     cargarTurnos('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const onChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const onFiltroChange = async (e) => {
     const estado = e.target.value;
     setFiltroEstado(estado);
     await cargarTurnos(estado);
+  };
+
+  const onFechaChange = async (e) => {
+    const fecha = e.target.value;
+    setForm({ ...form, fecha, hora_inicio: '' });
+    setSlots([]);
+    if (!fecha) return;
+    setCargandoSlots(true);
+    try {
+      const data = await api.obtenerDisponibilidad(token, fecha);
+      setSlots(data.slots);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCargandoSlots(false);
+    }
+  };
+
+  const onChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const abrirFormulario = () => {
+    setMostrarForm(true);
+    setMensaje('');
+    setError('');
+  };
+
+  const cerrarFormulario = () => {
+    setMostrarForm(false);
+    setForm(FORM_VACIO);
+    setSlots([]);
   };
 
   const onSubmit = async (e) => {
@@ -65,8 +106,8 @@ export default function Turnos() {
     setMensaje('');
     try {
       await api.crearTurno(token, form);
-      setForm(FORM_VACIO);
-      setMensaje('Turno creado. Queda pendiente de confirmacion por Diagnotest.');
+      setMensaje('Turno creado. Queda pendiente de confirmacion.');
+      cerrarFormulario();
       await cargarTurnos();
     } catch (err) {
       setError(err.message);
@@ -95,121 +136,127 @@ export default function Turnos() {
     }
   };
 
+  const grupos = agruparPorFecha(turnos);
+  const hoy = new Date().toISOString().slice(0, 10);
+
   return (
-    <div className="container">
+    <div className="container container-angosto">
       {error && <div className="error-banner">{error}</div>}
       {mensaje && <div className="success-banner">{mensaje}</div>}
 
-      <div className="card">
-        <h2>Nuevo turno</h2>
-        <form onSubmit={onSubmit}>
-          <div className="form-grid">
+      {!mostrarForm && (
+        <button className="btn btn-primary btn-ancho" onClick={abrirFormulario}>
+          + Agregar turno nuevo
+        </button>
+      )}
+
+      {mostrarForm && (
+        <div className="card">
+          <h2>Nuevo turno</h2>
+          <form onSubmit={onSubmit}>
             <div className="field">
-              <label>Propietario</label>
-              <select name="propietario_id" value={form.propietario_id} onChange={onChange} required>
-                <option value="">Seleccionar...</option>
-                {propietarios.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nombre} ({p.unidad})
+              <label>Tutor</label>
+              <input name="tutor" value={form.tutor} onChange={onChange} required />
+            </div>
+            <div className="field" style={{ marginTop: '0.75rem' }}>
+              <label>Telefono</label>
+              <input name="telefono" type="tel" value={form.telefono} onChange={onChange} required />
+            </div>
+            <div className="field" style={{ marginTop: '0.75rem' }}>
+              <label>Dia</label>
+              <input
+                type="date"
+                name="fecha"
+                min={hoy}
+                value={form.fecha}
+                onChange={onFechaChange}
+                required
+              />
+            </div>
+            <div className="field" style={{ marginTop: '0.75rem' }}>
+              <label>Horario</label>
+              <select
+                name="hora_inicio"
+                value={form.hora_inicio}
+                onChange={onChange}
+                disabled={!form.fecha || cargandoSlots}
+                required
+              >
+                <option value="">
+                  {!form.fecha
+                    ? 'Elegi un dia primero'
+                    : cargandoSlots
+                      ? 'Cargando horarios...'
+                      : slots.length === 0
+                        ? 'No hay horarios disponibles'
+                        : 'Seleccionar...'}
+                </option>
+                {slots.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
                   </option>
                 ))}
               </select>
             </div>
-            <div className="field">
-              <label>Titulo</label>
-              <input name="titulo" value={form.titulo} onChange={onChange} required />
+            <div className="actions-row" style={{ marginTop: '1rem' }}>
+              <button className="btn btn-primary" type="submit">
+                Crear turno
+              </button>
+              <button className="btn" type="button" onClick={cerrarFormulario}>
+                Cancelar
+              </button>
             </div>
-            <div className="field">
-              <label>Fecha</label>
-              <input type="date" name="fecha" value={form.fecha} onChange={onChange} required />
-            </div>
-            <div className="field">
-              <label>Hora inicio</label>
-              <input type="time" name="hora_inicio" value={form.hora_inicio} onChange={onChange} required />
-            </div>
-            <div className="field">
-              <label>Hora fin</label>
-              <input type="time" name="hora_fin" value={form.hora_fin} onChange={onChange} required />
-            </div>
-          </div>
-          <div className="field" style={{ marginTop: '0.85rem' }}>
-            <label>Descripcion (opcional)</label>
-            <textarea name="descripcion" value={form.descripcion} onChange={onChange} rows={2} />
-          </div>
-          <div className="actions-row" style={{ marginTop: '1rem' }}>
-            <button className="btn btn-primary" type="submit">
-              Crear turno
-            </button>
-          </div>
-        </form>
-      </div>
+          </form>
+        </div>
+      )}
 
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="agenda-header">
           <h2 style={{ margin: 0 }}>Turnos</h2>
-          <div className="field" style={{ minWidth: 180 }}>
-            <select value={filtroEstado} onChange={onFiltroChange}>
-              <option value="">Todos los estados</option>
-              <option value="pendiente">Pendiente</option>
-              <option value="confirmado">Confirmado</option>
-              <option value="rechazado">Rechazado</option>
-              <option value="cancelado">Cancelado</option>
-            </select>
-          </div>
+          <select value={filtroEstado} onChange={onFiltroChange}>
+            <option value="">Todos los estados</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="confirmado">Confirmado</option>
+            <option value="rechazado">Rechazado</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
         </div>
 
         {cargando ? (
           <p className="muted">Cargando...</p>
-        ) : turnos.length === 0 ? (
+        ) : grupos.length === 0 ? (
           <p className="muted">No hay turnos para mostrar.</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Turno</th>
-                <th>Propietario</th>
-                <th>Fecha / Horario</th>
-                <th>Estado</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {turnos.map((t) => (
-                <tr key={t.id}>
-                  <td>
-                    <strong>{t.titulo}</strong>
-                    {t.descripcion && <div className="muted">{t.descripcion}</div>}
+          grupos.map((grupo) => (
+            <div key={grupo.fecha} className="agenda-dia">
+              <h3 className="agenda-fecha">{formatearFecha(grupo.fecha)}</h3>
+              {grupo.turnos.map((t) => (
+                <div key={t.id} className="agenda-item">
+                  <div className="agenda-hora">
+                    {t.hora_inicio} - {t.hora_fin}
+                  </div>
+                  <div className="agenda-datos">
+                    <strong>{t.tutor}</strong>
+                    <div className="muted">{t.telefono}</div>
                     {t.estado === 'rechazado' && t.motivo_rechazo && (
                       <div className="muted">Motivo: {t.motivo_rechazo}</div>
                     )}
-                  </td>
-                  <td>
-                    {t.propietario_nombre}
-                    <div className="muted">{t.propietario_unidad}</div>
-                  </td>
-                  <td>
-                    {t.fecha}
-                    <div className="muted">{t.hora_inicio} - {t.hora_fin}</div>
-                  </td>
-                  <td>
-                    <span className={`badge badge-${t.estado}`}>{ETIQUETAS_ESTADO[t.estado]}</span>
-                  </td>
-                  <td>
-                    <div className="actions-row">
-                      {t.estado !== 'cancelado' && (
-                        <button className="btn" onClick={() => cancelar(t.id)}>
-                          Cancelar
-                        </button>
-                      )}
-                      <button className="btn btn-danger" onClick={() => eliminar(t.id)}>
-                        Eliminar
+                  </div>
+                  <span className={`badge badge-${t.estado}`}>{ETIQUETAS_ESTADO[t.estado]}</span>
+                  <div className="actions-row">
+                    {t.estado !== 'cancelado' && (
+                      <button className="btn" onClick={() => cancelar(t.id)}>
+                        Cancelar
                       </button>
-                    </div>
-                  </td>
-                </tr>
+                    )}
+                    <button className="btn btn-danger" onClick={() => eliminar(t.id)}>
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          ))
         )}
       </div>
     </div>

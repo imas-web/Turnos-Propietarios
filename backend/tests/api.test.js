@@ -28,11 +28,12 @@ let jimenaToken;
 let danielaToken;
 let diagnotestToken;
 let adminToken;
-let propietarioJimenaId;
+
+const FECHA_FUTURA = '2030-06-10';
 
 before(async () => {
   await ensureInit();
-  await pool.query('TRUNCATE turnos, propietarios RESTART IDENTITY CASCADE');
+  await pool.query('TRUNCATE turnos RESTART IDENTITY CASCADE');
 
   jimenaToken = await login('jimena', 'jimena');
   danielaToken = await login('daniela', 'daniela');
@@ -59,57 +60,85 @@ test('login de cada usuario devuelve su rol', () => {
 });
 
 test('rechaza acceso sin token a rutas protegidas', async () => {
-  const res = await request(app).get('/api/propietarios');
+  const res = await request(app).get('/api/turnos');
   assert.equal(res.status, 401);
 });
 
-test('jimena crea un propietario propio', async () => {
+test('jimena ve horarios disponibles cada 15 minutos entre 08:00 y 20:00', async () => {
   const res = await request(app)
-    .post('/api/propietarios')
-    .set('Authorization', `Bearer ${jimenaToken}`)
-    .send({ nombre: 'Paciente de Jimena', email: 'paciente1@test.com', unidad: '1A' });
+    .get(`/api/turnos/disponibilidad?fecha=${FECHA_FUTURA}`)
+    .set('Authorization', `Bearer ${jimenaToken}`);
 
-  assert.equal(res.status, 201);
-  propietarioJimenaId = res.body.id;
-});
-
-test('daniela no ve los propietarios de jimena', async () => {
-  const res = await request(app)
-    .get('/api/propietarios')
-    .set('Authorization', `Bearer ${danielaToken}`);
   assert.equal(res.status, 200);
-  assert.equal(res.body.length, 0);
+  assert.ok(res.body.slots.includes('08:00'));
+  assert.ok(res.body.slots.includes('19:45'));
+  assert.ok(!res.body.slots.includes('20:00'));
+  assert.equal(res.body.slots.length, 48);
 });
 
-test('jimena crea un turno para su propietario', async () => {
+let turnoJimenaId;
+
+test('jimena crea un turno con tutor y telefono', async () => {
   const res = await request(app)
     .post('/api/turnos')
     .set('Authorization', `Bearer ${jimenaToken}`)
     .send({
-      propietario_id: propietarioJimenaId,
-      titulo: 'Extraccion de sangre',
-      fecha: '2026-08-01',
+      tutor: 'Familia Perez',
+      telefono: '11-4444-5555',
+      fecha: FECHA_FUTURA,
       hora_inicio: '10:00',
-      hora_fin: '10:30',
     });
 
   assert.equal(res.status, 201);
   assert.equal(res.body.estado, 'pendiente');
+  assert.equal(res.body.hora_fin, '10:15');
+  turnoJimenaId = res.body.id;
 });
 
-test('daniela no puede crear un turno usando el propietario de jimena', async () => {
+test('ese horario ya no aparece disponible para jimena', async () => {
+  const res = await request(app)
+    .get(`/api/turnos/disponibilidad?fecha=${FECHA_FUTURA}`)
+    .set('Authorization', `Bearer ${jimenaToken}`);
+  assert.ok(!res.body.slots.includes('10:00'));
+});
+
+test('daniela si puede tomar el mismo horario (agenda por extraccionista)', async () => {
   const res = await request(app)
     .post('/api/turnos')
     .set('Authorization', `Bearer ${danielaToken}`)
     .send({
-      propietario_id: propietarioJimenaId,
-      titulo: 'Intento invalido',
-      fecha: '2026-08-01',
-      hora_inicio: '11:00',
-      hora_fin: '11:30',
+      tutor: 'Familia Gomez',
+      telefono: '11-5555-6666',
+      fecha: FECHA_FUTURA,
+      hora_inicio: '10:00',
     });
+  assert.equal(res.status, 201);
+});
 
-  assert.equal(res.status, 404);
+test('jimena no puede crear otro turno en el mismo horario ya ocupado', async () => {
+  const res = await request(app)
+    .post('/api/turnos')
+    .set('Authorization', `Bearer ${jimenaToken}`)
+    .send({
+      tutor: 'Otra familia',
+      telefono: '11-0000-0000',
+      fecha: FECHA_FUTURA,
+      hora_inicio: '10:00',
+    });
+  assert.equal(res.status, 409);
+});
+
+test('rechaza un horario que no es multiplo de 15 minutos', async () => {
+  const res = await request(app)
+    .post('/api/turnos')
+    .set('Authorization', `Bearer ${jimenaToken}`)
+    .send({
+      tutor: 'Familia Ruiz',
+      telefono: '11-1111-2222',
+      fecha: FECHA_FUTURA,
+      hora_inicio: '10:07',
+    });
+  assert.equal(res.status, 400);
 });
 
 test('daniela no ve los turnos de jimena', async () => {
@@ -117,7 +146,8 @@ test('daniela no ve los turnos de jimena', async () => {
     .get('/api/turnos')
     .set('Authorization', `Bearer ${danielaToken}`);
   assert.equal(res.status, 200);
-  assert.equal(res.body.length, 0);
+  assert.equal(res.body.length, 1);
+  assert.equal(res.body[0].tutor, 'Familia Gomez');
 });
 
 test('diagnotest ve todos los turnos pendientes de todas las extraccionistas', async () => {
@@ -125,35 +155,25 @@ test('diagnotest ve todos los turnos pendientes de todas las extraccionistas', a
     .get('/api/turnos')
     .set('Authorization', `Bearer ${diagnotestToken}`);
   assert.equal(res.status, 200);
-  assert.equal(res.body.length, 1);
+  assert.equal(res.body.length, 2);
 });
 
 test('jimena no puede confirmar turnos (solo diagnotest)', async () => {
-  const listado = await request(app)
-    .get('/api/turnos')
-    .set('Authorization', `Bearer ${jimenaToken}`);
-  const turnoId = listado.body[0].id;
-
   const res = await request(app)
-    .post(`/api/turnos/${turnoId}/confirmar`)
+    .post(`/api/turnos/${turnoJimenaId}/confirmar`)
     .set('Authorization', `Bearer ${jimenaToken}`);
   assert.equal(res.status, 403);
 });
 
 test('diagnotest confirma un turno pendiente', async () => {
-  const listado = await request(app)
-    .get('/api/turnos')
-    .set('Authorization', `Bearer ${diagnotestToken}`);
-  const turnoId = listado.body[0].id;
-
   const res = await request(app)
-    .post(`/api/turnos/${turnoId}/confirmar`)
+    .post(`/api/turnos/${turnoJimenaId}/confirmar`)
     .set('Authorization', `Bearer ${diagnotestToken}`);
   assert.equal(res.status, 200);
   assert.equal(res.body.estado, 'confirmado');
 
   const segundaVez = await request(app)
-    .post(`/api/turnos/${turnoId}/confirmar`)
+    .post(`/api/turnos/${turnoJimenaId}/confirmar`)
     .set('Authorization', `Bearer ${diagnotestToken}`);
   assert.equal(segundaVez.status, 409);
 });
@@ -163,11 +183,10 @@ test('diagnotest rechaza un turno pendiente con motivo', async () => {
     .post('/api/turnos')
     .set('Authorization', `Bearer ${jimenaToken}`)
     .send({
-      propietario_id: propietarioJimenaId,
-      titulo: 'Turno a rechazar',
-      fecha: '2026-08-05',
-      hora_inicio: '09:00',
-      hora_fin: '09:30',
+      tutor: 'Familia a rechazar',
+      telefono: '11-9999-8888',
+      fecha: FECHA_FUTURA,
+      hora_inicio: '11:00',
     });
 
   const rechazo = await request(app)
@@ -178,6 +197,13 @@ test('diagnotest rechaza un turno pendiente con motivo', async () => {
   assert.equal(rechazo.status, 200);
   assert.equal(rechazo.body.estado, 'rechazado');
   assert.equal(rechazo.body.motivo_rechazo, 'Paciente no disponible');
+});
+
+test('el horario de un turno rechazado vuelve a estar disponible', async () => {
+  const res = await request(app)
+    .get(`/api/turnos/disponibilidad?fecha=${FECHA_FUTURA}`)
+    .set('Authorization', `Bearer ${jimenaToken}`);
+  assert.ok(res.body.slots.includes('11:00'));
 });
 
 test('turno inexistente devuelve 404', async () => {
@@ -235,7 +261,7 @@ test('admin elimina un usuario sin turnos asociados', async () => {
   assert.equal(res.status, 204);
 });
 
-test('admin no puede eliminar una extraccionista con propietarios asociados', async () => {
+test('admin no puede eliminar una extraccionista con turnos asociados', async () => {
   const listado = await request(app)
     .get('/api/usuarios')
     .set('Authorization', `Bearer ${adminToken}`);

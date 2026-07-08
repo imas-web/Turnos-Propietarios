@@ -4,9 +4,10 @@ Aplicación para gestionar turnos de extracción con distintos tipos de acceso:
 usuarias "extraccionista" que cargan sus propios turnos (por ejemplo Jimena y
 Daniela), un usuario "diagnotest" que los confirma o rechaza, y un usuario
 "admin" que gestiona las cuentas de extraccionista/diagnotest. Cada
-extraccionista ve únicamente los turnos y propietarios que ella misma creó;
-diagnotest ve todos los turnos pendientes de todas y los resuelve desde el
-panel, sin necesidad de links públicos ni correos.
+extraccionista ve únicamente los turnos que ella misma creó, en una agenda
+pensada para celular; diagnotest ve todos los turnos de todas (con una
+barra lateral de pendientes por confirmar) y los resuelve desde el panel,
+sin necesidad de links públicos ni correos.
 
 ## Estructura
 
@@ -20,12 +21,14 @@ frontend/   Panel (React + Vite)
 - **Login por usuario** (JWT), con cuatro cuentas iniciales: `jimena`,
   `daniela` (rol "extraccionista"), `diagnotest` (rol "diagnotest") y
   `admin` (rol "admin").
-- **Extraccionista** (Jimena/Daniela): ABM de sus propios propietarios, y ABM
-  de sus propios turnos (título, descripción, fecha y horario). No ve los
-  turnos ni propietarios de otra extraccionista.
-- **Diagnotest**: ve todos los turnos pendientes (de cualquier
-  extraccionista) y los **confirma** o **rechaza** (con motivo opcional)
-  desde el panel.
+- **Extraccionista** (Jimena/Daniela): agenda (lista por día) de sus propios
+  turnos ya otorgados, y un botón "Agregar turno nuevo" con Tutor, Teléfono,
+  Día y Horario. Los horarios se ofrecen cada 15 minutos entre las 08:00 y
+  las 20:00, mostrando únicamente los que esa extraccionista todavía tiene
+  libres ese día. No ve los turnos de otra extraccionista.
+- **Diagnotest**: ve la misma agenda con los turnos de todas las
+  extraccionistas, más una barra lateral con los turnos pendientes de
+  **confirmar** o **rechazar** (con motivo opcional).
 - **Admin**: gestiona (crea, edita, elimina) las cuentas de tipo
   extraccionista y diagnotest desde el panel.
 - Estados de turno: `pendiente`, `confirmado`, `rechazado`, `cancelado`.
@@ -74,8 +77,8 @@ En desarrollo, Vite redirige `/api/*` hacia `http://localhost:4000` (ver
 
 ## Flujo típico
 
-1. Jimena (o Daniela) inicia sesión, carga sus propietarios y crea turnos
-   para ellos. Quedan en estado `pendiente`.
+1. Jimena (o Daniela) inicia sesión y crea turnos indicando tutor, teléfono,
+   día y horario disponible. Quedan en estado `pendiente`.
 2. Diagnotest inicia sesión y ve la lista de turnos pendientes de todas las
    extraccionistas, y los confirma o rechaza (con motivo opcional).
 3. Cuando Jimena/Daniela vuelven a entrar, ven el estado actualizado de

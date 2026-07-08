@@ -31,6 +31,7 @@ export const pool = new Pool({
   ssl: isLocal ? false : { rejectUnauthorized: false },
 });
 
+// Esquema para instalaciones nuevas (sin datos previos).
 const SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS usuarios (
     id SERIAL PRIMARY KEY,
@@ -41,22 +42,10 @@ const SCHEMA_SQL = `
     creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
 
-  CREATE TABLE IF NOT EXISTS propietarios (
-    id SERIAL PRIMARY KEY,
-    nombre TEXT NOT NULL,
-    email TEXT NOT NULL,
-    telefono TEXT,
-    unidad TEXT NOT NULL,
-    activo INTEGER NOT NULL DEFAULT 1,
-    creado_por INTEGER REFERENCES usuarios(id),
-    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  );
-
   CREATE TABLE IF NOT EXISTS turnos (
     id SERIAL PRIMARY KEY,
-    propietario_id INTEGER NOT NULL REFERENCES propietarios(id) ON DELETE CASCADE,
-    titulo TEXT NOT NULL,
-    descripcion TEXT,
+    tutor TEXT NOT NULL,
+    telefono TEXT,
     fecha TEXT NOT NULL,
     hora_inicio TEXT NOT NULL,
     hora_fin TEXT NOT NULL,
@@ -67,25 +56,40 @@ const SCHEMA_SQL = `
     creado_por INTEGER REFERENCES usuarios(id),
     creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
+`;
 
-  ALTER TABLE propietarios ADD COLUMN IF NOT EXISTS creado_por INTEGER REFERENCES usuarios(id);
-  ALTER TABLE turnos ADD COLUMN IF NOT EXISTS creado_por INTEGER REFERENCES usuarios(id);
+// Migraciones aditivas/idempotentes para instalaciones ya existentes, que
+// todavia pueden tener el esquema viejo (propietarios, roles antiguos,
+// columnas de token, etc.). Cada sentencia es segura de correr mas de una
+// vez.
+const MIGRACIONES_SQL = `
+  ALTER TABLE turnos ADD COLUMN IF NOT EXISTS tutor TEXT;
+  ALTER TABLE turnos ADD COLUMN IF NOT EXISTS telefono TEXT;
+  UPDATE turnos SET tutor = 'Sin dato' WHERE tutor IS NULL;
+  ALTER TABLE turnos ALTER COLUMN tutor SET NOT NULL;
+  ALTER TABLE turnos DROP COLUMN IF EXISTS propietario_id;
+  ALTER TABLE turnos DROP COLUMN IF EXISTS titulo;
+  ALTER TABLE turnos DROP COLUMN IF EXISTS descripcion;
   ALTER TABLE turnos DROP COLUMN IF EXISTS token;
   ALTER TABLE turnos DROP COLUMN IF EXISTS token_expira;
+  DROP TABLE IF EXISTS propietarios CASCADE;
   DROP TABLE IF EXISTS admins;
 
-  -- Renombra los roles del esquema anterior (cargador/confirmador) a los
-  -- nombres actuales, y permite el nuevo rol "admin".
   ALTER TABLE usuarios DROP CONSTRAINT IF EXISTS usuarios_rol_check;
   UPDATE usuarios SET rol = 'extraccionista' WHERE rol = 'cargador';
   UPDATE usuarios SET rol = 'diagnotest' WHERE rol = 'confirmador';
   ALTER TABLE usuarios ADD CONSTRAINT usuarios_rol_check
     CHECK (rol IN ('extraccionista', 'diagnotest', 'admin'));
 
-  CREATE INDEX IF NOT EXISTS idx_turnos_propietario ON turnos(propietario_id);
   CREATE INDEX IF NOT EXISTS idx_turnos_fecha ON turnos(fecha);
   CREATE INDEX IF NOT EXISTS idx_turnos_creado_por ON turnos(creado_por);
-  CREATE INDEX IF NOT EXISTS idx_propietarios_creado_por ON propietarios(creado_por);
+
+  -- Evita que una misma extraccionista tenga dos turnos activos en el
+  -- mismo horario (la disponibilidad ya lo filtra del lado de la app,
+  -- esto es una red de seguridad ante pedidos simultaneos).
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_turnos_horario_unico
+    ON turnos(creado_por, fecha, hora_inicio)
+    WHERE estado IN ('pendiente', 'confirmado');
 `;
 
 const USUARIOS_INICIALES = [
@@ -146,7 +150,10 @@ let initPromise;
 // "cold start" y despues queda memoizado durante la vida de esa instancia.
 export function ensureInit() {
   if (!initPromise) {
-    initPromise = pool.query(SCHEMA_SQL).then(() => ensureUsuarios());
+    initPromise = pool
+      .query(SCHEMA_SQL)
+      .then(() => pool.query(MIGRACIONES_SQL))
+      .then(() => ensureUsuarios());
   }
   return initPromise;
 }
