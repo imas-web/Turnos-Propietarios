@@ -29,6 +29,7 @@ export const api = {
   obtenerDisponibilidad: (token, fecha) =>
     request(`/turnos/disponibilidad?fecha=${fecha}`, { token }),
   crearTurno: (token, data) => request('/turnos', { method: 'POST', body: data, token }),
+  actualizarTurno: (token, id, data) => request(`/turnos/${id}`, { method: 'PUT', body: data, token }),
   cancelarTurno: (token, id) => request(`/turnos/${id}/cancelar`, { method: 'POST', token }),
   eliminarTurno: (token, id) => request(`/turnos/${id}`, { method: 'DELETE', token }),
   confirmarTurno: (token, id) => request(`/turnos/${id}/confirmar`, { method: 'POST', token }),

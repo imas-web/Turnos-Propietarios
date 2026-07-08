@@ -41,6 +41,7 @@ export default function Turnos() {
   const [slots, setSlots] = useState([]);
   const [form, setForm] = useState(FORM_VACIO);
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [editando, setEditando] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState('');
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
@@ -70,15 +71,17 @@ export default function Turnos() {
     await cargarTurnos(estado);
   };
 
-  const onFechaChange = async (e) => {
-    const fecha = e.target.value;
-    setForm({ ...form, fecha, hora_inicio: '' });
-    setSlots([]);
-    if (!fecha) return;
+  const cargarSlots = async (fecha, incluirHoraPropia) => {
+    if (!fecha) {
+      setSlots([]);
+      return;
+    }
     setCargandoSlots(true);
     try {
       const data = await api.obtenerDisponibilidad(token, fecha);
-      setSlots(data.slots);
+      const disponibles = new Set(data.slots);
+      if (incluirHoraPropia) disponibles.add(incluirHoraPropia);
+      setSlots([...disponibles].sort());
     } catch (err) {
       setError(err.message);
     } finally {
@@ -86,16 +89,42 @@ export default function Turnos() {
     }
   };
 
+  const onFechaChange = async (e) => {
+    const fecha = e.target.value;
+    const esLaFechaOriginal = editando && fecha === editando.fecha;
+    setForm({ ...form, fecha, hora_inicio: esLaFechaOriginal ? editando.hora_inicio : '' });
+    await cargarSlots(fecha, esLaFechaOriginal ? editando.hora_inicio : null);
+  };
+
   const onChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const abrirFormulario = () => {
+    setEditando(null);
+    setForm(FORM_VACIO);
+    setSlots([]);
     setMostrarForm(true);
     setMensaje('');
     setError('');
   };
 
+  const abrirEdicion = async (turno) => {
+    setEditando(turno);
+    setForm({
+      tutor: turno.tutor,
+      telefono: turno.telefono,
+      direccion: turno.direccion,
+      fecha: turno.fecha,
+      hora_inicio: turno.hora_inicio,
+    });
+    setMostrarForm(true);
+    setMensaje('');
+    setError('');
+    await cargarSlots(turno.fecha, turno.hora_inicio);
+  };
+
   const cerrarFormulario = () => {
     setMostrarForm(false);
+    setEditando(null);
     setForm(FORM_VACIO);
     setSlots([]);
   };
@@ -105,8 +134,13 @@ export default function Turnos() {
     setError('');
     setMensaje('');
     try {
-      await api.crearTurno(token, form);
-      setMensaje('Turno creado. Queda pendiente de confirmacion.');
+      if (editando) {
+        await api.actualizarTurno(token, editando.id, form);
+        setMensaje('Turno actualizado.');
+      } else {
+        await api.crearTurno(token, form);
+        setMensaje('Turno creado. Queda pendiente de confirmacion.');
+      }
       cerrarFormulario();
       await cargarTurnos();
     } catch (err) {
@@ -152,7 +186,7 @@ export default function Turnos() {
 
       {mostrarForm && (
         <div className="card">
-          <h2>Nuevo turno</h2>
+          <h2>{editando ? 'Editar turno' : 'Nuevo turno'}</h2>
           <form onSubmit={onSubmit}>
             <div className="field">
               <label>Tutor</label>
@@ -204,7 +238,7 @@ export default function Turnos() {
             </div>
             <div className="actions-row" style={{ marginTop: '1rem' }}>
               <button className="btn btn-primary" type="submit">
-                Crear turno
+                {editando ? 'Guardar cambios' : 'Crear turno'}
               </button>
               <button className="btn" type="button" onClick={cerrarFormulario}>
                 Cancelar
@@ -249,6 +283,11 @@ export default function Turnos() {
                   </div>
                   <span className={`badge badge-${t.estado}`}>{ETIQUETAS_ESTADO[t.estado]}</span>
                   <div className="actions-row">
+                    {t.estado !== 'cancelado' && (
+                      <button className="btn" onClick={() => abrirEdicion(t)}>
+                        Editar
+                      </button>
+                    )}
                     {t.estado !== 'cancelado' && (
                       <button className="btn" onClick={() => cancelar(t.id)}>
                         Cancelar
