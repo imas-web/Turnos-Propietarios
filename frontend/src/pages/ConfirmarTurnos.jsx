@@ -36,6 +36,7 @@ export default function ConfirmarTurnos() {
   const [turnosDia, setTurnosDia] = useState([]);
   const [pendientes, setPendientes] = useState([]);
   const [mostrarPendientes, setMostrarPendientes] = useState(false);
+  const [filtroFechaPendientes, setFiltroFechaPendientes] = useState('');
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(true);
@@ -63,9 +64,14 @@ export default function ConfirmarTurnos() {
     }
   };
 
-  const cargarPendientes = async () => {
+  const cargarPendientes = async (fechaFiltro = filtroFechaPendientes) => {
     try {
-      const data = await api.listarTurnos(token, { estado: 'pendiente' });
+      const params = { estado: 'pendiente' };
+      if (fechaFiltro) {
+        params.desde = fechaFiltro;
+        params.hasta = fechaFiltro;
+      }
+      const data = await api.listarTurnos(token, params);
       setPendientes(data);
     } catch (err) {
       setError(err.message);
@@ -86,6 +92,17 @@ export default function ConfirmarTurnos() {
     const f = e.target.value;
     setFecha(f);
     await cargarTurnosDia(f);
+  };
+
+  const onFiltroFechaPendientesChange = async (e) => {
+    const f = e.target.value;
+    setFiltroFechaPendientes(f);
+    await cargarPendientes(f);
+  };
+
+  const limpiarFiltroFechaPendientes = async () => {
+    setFiltroFechaPendientes('');
+    await cargarPendientes('');
   };
 
   const confirmar = async (id) => {
@@ -139,6 +156,18 @@ export default function ConfirmarTurnos() {
 
         {mostrarPendientes && (
           <>
+            <div className="actions-row" style={{ marginBottom: '0.85rem' }}>
+              <input
+                type="date"
+                value={filtroFechaPendientes}
+                onChange={onFiltroFechaPendientesChange}
+              />
+              {filtroFechaPendientes && (
+                <button className="btn" type="button" onClick={limpiarFiltroFechaPendientes}>
+                  Ver todos los dias
+                </button>
+              )}
+            </div>
             {error && <div className="error-banner">{error}</div>}
             {mensaje && <div className="success-banner">{mensaje}</div>}
             {pendientes.length === 0 ? (

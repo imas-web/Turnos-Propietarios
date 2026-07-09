@@ -43,15 +43,21 @@ export default function Turnos() {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [editando, setEditando] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState('');
+  const [filtroFecha, setFiltroFecha] = useState('');
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(true);
   const [cargandoSlots, setCargandoSlots] = useState(false);
 
-  const cargarTurnos = async (estado = filtroEstado) => {
+  const cargarTurnos = async (estado = filtroEstado, fecha = filtroFecha) => {
     setCargando(true);
     try {
-      const data = await api.listarTurnos(token, { estado });
+      const params = { estado };
+      if (fecha) {
+        params.desde = fecha;
+        params.hasta = fecha;
+      }
+      const data = await api.listarTurnos(token, params);
       setTurnos(data);
     } catch (err) {
       setError(err.message);
@@ -61,14 +67,25 @@ export default function Turnos() {
   };
 
   useEffect(() => {
-    cargarTurnos('');
+    cargarTurnos('', '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const onFiltroChange = async (e) => {
+  const onFiltroEstadoChange = async (e) => {
     const estado = e.target.value;
     setFiltroEstado(estado);
-    await cargarTurnos(estado);
+    await cargarTurnos(estado, filtroFecha);
+  };
+
+  const onFiltroFechaChange = async (e) => {
+    const fecha = e.target.value;
+    setFiltroFecha(fecha);
+    await cargarTurnos(filtroEstado, fecha);
+  };
+
+  const limpiarFiltroFecha = async () => {
+    setFiltroFecha('');
+    await cargarTurnos(filtroEstado, '');
   };
 
   const cargarSlots = async (fecha, incluirHoraPropia) => {
@@ -251,13 +268,21 @@ export default function Turnos() {
       <div className="card">
         <div className="agenda-header">
           <h2 style={{ margin: 0 }}>Turnos</h2>
-          <select value={filtroEstado} onChange={onFiltroChange}>
-            <option value="">Todos los estados</option>
-            <option value="pendiente">Pendiente</option>
-            <option value="confirmado">Confirmado</option>
-            <option value="rechazado">Rechazado</option>
-            <option value="cancelado">Cancelado</option>
-          </select>
+          <div className="actions-row">
+            <input type="date" value={filtroFecha} onChange={onFiltroFechaChange} />
+            {filtroFecha && (
+              <button className="btn" type="button" onClick={limpiarFiltroFecha}>
+                Ver todos los dias
+              </button>
+            )}
+            <select value={filtroEstado} onChange={onFiltroEstadoChange}>
+              <option value="">Todos los estados</option>
+              <option value="pendiente">Pendiente</option>
+              <option value="confirmado">Confirmado</option>
+              <option value="rechazado">Rechazado</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+          </div>
         </div>
 
         {cargando ? (
