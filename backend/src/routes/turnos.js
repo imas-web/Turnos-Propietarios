@@ -293,7 +293,11 @@ router.post(
     try {
       await enviarCorreoConfirmacion({ to: turno.email, tutor: turno.tutor, turno });
     } catch (err) {
-      console.error('No se pudo enviar el correo de confirmacion:', err);
+      console.error(
+        'No se pudo enviar el correo de confirmacion:',
+        err.code || '',
+        err.response || err.message || err
+      );
     }
 
     res.json(turno);

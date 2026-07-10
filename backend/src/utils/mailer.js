@@ -6,13 +6,17 @@ function getTransporter() {
   if (transporter) return transporter;
   if (!process.env.SMTP_HOST) return null;
 
+  // Gmail muestra las contrasenas de aplicacion en grupos separados por
+  // espacios ("abcd efgh ijkl mnop"); si se pegan tal cual, Gmail rechaza
+  // el login. Se quitan espacios y saltos de linea por las dudas.
+  const usuario = process.env.SMTP_USER ? process.env.SMTP_USER.trim() : undefined;
+  const clave = process.env.SMTP_PASS ? process.env.SMTP_PASS.replace(/\s+/g, '') : undefined;
+
   transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT) || 465,
     secure: Number(process.env.SMTP_PORT || 465) === 465,
-    auth: process.env.SMTP_USER
-      ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-      : undefined,
+    auth: usuario ? { user: usuario, pass: clave } : undefined,
   });
   return transporter;
 }
