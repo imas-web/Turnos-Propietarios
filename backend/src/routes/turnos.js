@@ -92,6 +92,8 @@ router.get(
     if (req.usuario.rol === 'extraccionista') {
       params.push(req.usuario.sub);
       condiciones.push(`t.creado_por = $${params.length}`);
+      // Los turnos rechazados no se muestran a la extraccionista.
+      condiciones.push("t.estado != 'rechazado'");
     }
     if (estado) {
       params.push(estado);
@@ -122,7 +124,10 @@ router.get(
     const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
     const turno = rows[0];
     if (!turno) return res.status(404).json({ error: 'Turno no encontrado' });
-    if (req.usuario.rol === 'extraccionista' && turno.creado_por !== req.usuario.sub) {
+    if (
+      req.usuario.rol === 'extraccionista' &&
+      (turno.creado_por !== req.usuario.sub || turno.estado === 'rechazado')
+    ) {
       return res.status(404).json({ error: 'Turno no encontrado' });
     }
     res.json(turno);

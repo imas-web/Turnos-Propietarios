@@ -244,6 +244,27 @@ test('el horario de un turno rechazado vuelve a estar disponible', async () => {
   assert.ok(res.body.slots.includes('11:00'));
 });
 
+test('a jimena no se le muestran sus propios turnos rechazados', async () => {
+  const res = await request(app)
+    .get('/api/turnos')
+    .set('Authorization', `Bearer ${jimenaToken}`);
+  assert.equal(res.status, 200);
+  assert.ok(res.body.every((t) => t.estado !== 'rechazado'));
+
+  const conFiltro = await request(app)
+    .get('/api/turnos?estado=rechazado')
+    .set('Authorization', `Bearer ${jimenaToken}`);
+  assert.equal(conFiltro.body.length, 0);
+});
+
+test('diagnotest si ve los turnos rechazados', async () => {
+  const res = await request(app)
+    .get('/api/turnos?estado=rechazado')
+    .set('Authorization', `Bearer ${diagnotestToken}`);
+  assert.equal(res.status, 200);
+  assert.ok(res.body.some((t) => t.tutor === 'Familia a rechazar'));
+});
+
 test('turno inexistente devuelve 404', async () => {
   const res = await request(app)
     .get('/api/turnos/999999')

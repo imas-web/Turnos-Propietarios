@@ -284,7 +284,6 @@ export default function Turnos() {
               <option value="">Todos los estados</option>
               <option value="pendiente">Pendiente</option>
               <option value="confirmado">Confirmado</option>
-              <option value="rechazado">Rechazado</option>
               <option value="cancelado">Cancelado</option>
             </select>
           </div>
@@ -308,9 +307,6 @@ export default function Turnos() {
                     <div className="muted">{t.telefono}</div>
                     <div className="muted">{t.direccion}</div>
                     <div className="muted">{t.email}</div>
-                    {t.estado === 'rechazado' && t.motivo_rechazo && (
-                      <div className="muted">Motivo: {t.motivo_rechazo}</div>
-                    )}
                   </div>
                   <span className={`badge badge-${t.estado}`}>{ETIQUETAS_ESTADO[t.estado]}</span>
                   <div className="actions-row">
