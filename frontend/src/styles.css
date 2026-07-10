@@ -4,8 +4,9 @@
   --color-border: #e0e4e9;
   --color-text: #1f2933;
   --color-muted: #6b7280;
-  --color-primary: #2563eb;
-  --color-primary-dark: #1d4ed8;
+  --color-primary: #1e6b34;
+  --color-primary-dark: #144a24;
+  --color-primary-light: #e5f3e8;
   --color-success: #15803d;
   --color-success-bg: #dcfce7;
   --color-danger: #b91c1c;
@@ -34,6 +35,43 @@ button {
 
 input, select, textarea {
   font-family: inherit;
+}
+
+.logo-diagnotest {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  background: var(--color-primary);
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 0.5rem 0.85rem;
+  line-height: 1.15;
+}
+
+.logo-diagnotest-nombre {
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.logo-diagnotest-tagline {
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #cdeed4;
+}
+
+.logo-diagnotest-md .logo-diagnotest-nombre {
+  font-size: 1.15rem;
+}
+
+.logo-diagnotest-lg .logo-diagnotest-nombre {
+  font-size: 1.6rem;
+}
+
+.logo-diagnotest-lg .logo-diagnotest-tagline {
+  font-size: 0.7rem;
 }
 
 .app-shell {
@@ -75,7 +113,14 @@ input, select, textarea {
   font-size: 0.9rem;
 }
 
-.topbar nav a.active, .topbar nav a:hover, .topbar nav button:hover {
+.topbar nav a.active {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
+  color: var(--color-primary-dark);
+  font-weight: 600;
+}
+
+.topbar nav a:hover, .topbar nav button:hover {
   background: var(--color-bg);
   border-color: var(--color-border);
 }
@@ -228,11 +273,25 @@ th {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 1rem;
+}
+
+.login-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 360px;
+}
+
+.login-logo {
+  align-items: center;
+  text-align: center;
 }
 
 .login-card {
   width: 100%;
-  max-width: 360px;
 }
 
 .actions-row {

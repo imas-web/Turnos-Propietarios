@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import Logo from '../components/Logo.jsx';
 
 export default function Login() {
   const { isAuthenticated, login } = useAuth();
@@ -30,34 +31,37 @@ export default function Login() {
 
   return (
     <div className="login-shell">
-      <div className="card login-card">
-        <h2>Ingresar</h2>
-        {error && <div className="error-banner">{error}</div>}
-        <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-          <div className="field">
-            <label htmlFor="usuario">Usuario</label>
-            <input
-              id="usuario"
-              value={usuario}
-              onChange={(e) => setUsuario(e.target.value)}
-              autoFocus
-              required
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="password">Contrasena</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-          <button className="btn btn-primary" type="submit" disabled={cargando}>
-            {cargando ? 'Ingresando...' : 'Ingresar'}
-          </button>
-        </form>
+      <div className="login-stack">
+        <Logo size="lg" className="login-logo" />
+        <div className="card login-card">
+          <h2>Ingresar</h2>
+          {error && <div className="error-banner">{error}</div>}
+          <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            <div className="field">
+              <label htmlFor="usuario">Usuario</label>
+              <input
+                id="usuario"
+                value={usuario}
+                onChange={(e) => setUsuario(e.target.value)}
+                autoFocus
+                required
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="password">Contrasena</label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <button className="btn btn-primary" type="submit" disabled={cargando}>
+              {cargando ? 'Ingresando...' : 'Ingresar'}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

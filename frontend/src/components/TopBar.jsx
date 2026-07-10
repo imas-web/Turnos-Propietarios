@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import Logo from './Logo.jsx';
 
 export default function TopBar() {
   const { nombre, rol, logout } = useAuth();
@@ -12,7 +13,7 @@ export default function TopBar() {
 
   return (
     <header className="topbar">
-      <h1>Turnos Propietarios</h1>
+      <Logo size="md" />
       <nav>
         {rol === 'extraccionista' && (
           <NavLink to="/turnos" className={({ isActive }) => (isActive ? 'active' : '')}>
