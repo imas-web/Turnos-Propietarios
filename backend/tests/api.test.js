@@ -332,8 +332,9 @@ test('admin no puede eliminar una extraccionista con turnos asociados', async ()
   assert.equal(res.status, 409);
 });
 
-test('el cron de recordatorios envia solo turnos confirmados para manana y los marca', async () => {
-  const manana = sumarDias(fechaYHoraActualEnArgentina().fecha, 1);
+test('el cron de recordatorios envia turnos confirmados de hoy y manana, y los marca', async () => {
+  const hoy = fechaYHoraActualEnArgentina().fecha;
+  const manana = sumarDias(hoy, 1);
 
   const creado = await request(app)
     .post('/api/turnos')
@@ -355,7 +356,8 @@ test('el cron de recordatorios envia solo turnos confirmados para manana y los m
 
   const res = await request(app).get('/api/cron/recordatorios');
   assert.equal(res.status, 200);
-  assert.equal(res.body.fecha, manana);
+  assert.equal(res.body.desde, hoy);
+  assert.equal(res.body.hasta, manana);
   assert.ok(res.body.procesados >= 1);
 
   const turno = await request(app)
@@ -366,6 +368,37 @@ test('el cron de recordatorios envia solo turnos confirmados para manana y los m
   const segundaVez = await request(app).get('/api/cron/recordatorios');
   assert.equal(segundaVez.status, 200);
   assert.equal(segundaVez.body.procesados, 0);
+});
+
+test('un turno confirmado para hoy tambien recibe el recordatorio (se confirmo tarde)', async () => {
+  const hoy = fechaYHoraActualEnArgentina().fecha;
+
+  const creado = await request(app)
+    .post('/api/turnos')
+    .set('Authorization', `Bearer ${danielaToken}`)
+    .send({
+      tutor: 'Familia Recordatorio Hoy',
+      telefono: '11-2222-4444',
+      direccion: 'Calle Recordatorio 2',
+      email: 'recordatorio-hoy@test.com',
+      fecha: hoy,
+      hora_inicio: '08:30',
+    });
+  assert.equal(creado.status, 201);
+
+  await request(app)
+    .post(`/api/turnos/${creado.body.id}/confirmar`)
+    .set('Authorization', `Bearer ${diagnotestToken}`)
+    .send({ numero_dt: 'DT-REC-HOY' });
+
+  const res = await request(app).get('/api/cron/recordatorios');
+  assert.equal(res.status, 200);
+  assert.ok(res.body.procesados >= 1);
+
+  const turno = await request(app)
+    .get(`/api/turnos/${creado.body.id}`)
+    .set('Authorization', `Bearer ${danielaToken}`);
+  assert.equal(turno.body.recordatorio_enviado, true);
 });
 
 test('el cron de recordatorios exige el secreto cuando CRON_SECRET esta configurado', async () => {

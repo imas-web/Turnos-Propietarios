@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { fechaYHoraActualEnArgentina } from './fechaArgentina.js';
 
 let transporter = null;
 
@@ -80,12 +81,16 @@ export async function enviarCorreoConfirmacion({ to, tutor, turno }) {
   return enviarCorreo({ to, asunto, texto });
 }
 
-// Envia el recordatorio del dia previo para turnos ya confirmados.
+// Envia el recordatorio para turnos ya confirmados que son "hoy" o
+// "manana" (ver comentario en routes/cron.js sobre por que puede ser hoy).
 export async function enviarCorreoRecordatorio({ to, tutor, turno }) {
-  const asunto = `Recordatorio: turno manana - ${turno.fecha} ${turno.hora_inicio}`;
+  const esHoy = turno.fecha === fechaYHoraActualEnArgentina().fecha;
+  const cuando = esHoy ? 'hoy' : 'manana';
+
+  const asunto = `Recordatorio: turno ${cuando} - ${turno.fecha} ${turno.hora_inicio}`;
   const texto =
     `Hola ${tutor},\n\n` +
-    `Te recordamos que manana tenes tu turno de extraccion:\n` +
+    `Te recordamos que ${cuando} tenes tu turno de extraccion:\n` +
     `Fecha: ${turno.fecha}\n` +
     `Horario: ${turno.hora_inicio} a ${turno.hora_fin}\n` +
     `Direccion: ${turno.direccion || '-'}\n\n` +

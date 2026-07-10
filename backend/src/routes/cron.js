@@ -15,8 +15,13 @@ function autorizado(req) {
   return req.get('authorization') === `Bearer ${secreto}`;
 }
 
-// Envia el recordatorio del dia previo a todos los turnos confirmados para
-// "manana" (segun la hora de Argentina) que todavia no lo recibieron.
+// Envia el recordatorio a los turnos confirmados para "hoy" o "manana"
+// (segun la hora de Argentina) que todavia no lo recibieron. Se incluye
+// "hoy" ademas de "manana" porque el cron solo corre una vez por dia: un
+// turno que se confirma despues de la corrida del dia (para el dia
+// siguiente) recien podria volver a evaluarse en la corrida siguiente, para
+// la cual esa fecha ya seria "hoy" y no "manana" — sin este margen, nunca
+// recibiria el recordatorio.
 // Pensado para ser invocado una vez por dia por un Vercel Cron Job.
 router.get(
   '/recordatorios',
@@ -28,8 +33,9 @@ router.get(
 
     const { rows } = await pool.query(
       `SELECT * FROM turnos
-       WHERE estado = 'confirmado' AND recordatorio_enviado = false AND fecha = $1`,
-      [manana]
+       WHERE estado = 'confirmado' AND recordatorio_enviado = false
+         AND fecha BETWEEN $1 AND $2`,
+      [hoy, manana]
     );
 
     for (const turno of rows) {
@@ -45,7 +51,7 @@ router.get(
       await pool.query('UPDATE turnos SET recordatorio_enviado = true WHERE id = $1', [turno.id]);
     }
 
-    res.json({ fecha: manana, procesados: rows.length });
+    res.json({ desde: hoy, hasta: manana, procesados: rows.length });
   })
 );
 
