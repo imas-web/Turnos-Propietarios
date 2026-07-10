@@ -24,7 +24,7 @@ frontend/   Panel (React + Vite)
 - **Extraccionista** (Jimena/Daniela): agenda (lista por día, filtrable por
   fecha y estado) de sus propios turnos ya otorgados, y un botón "Agregar
   turno nuevo" con Tutor, Teléfono, Dirección, Email, Día y Horario. Los
-  horarios se ofrecen cada 15 minutos entre las 08:00 y las 20:00, mostrando
+  horarios se ofrecen cada 30 minutos entre las 08:00 y las 20:00, mostrando
   únicamente los que esa extraccionista todavía tiene libres ese día. No ve
   los turnos de otra extraccionista ni los que fueron rechazados, y puede
   editar o cancelar los suyos. Al registrar el turno, se le envía un mail

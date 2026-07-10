@@ -9,7 +9,7 @@ const router = Router();
 
 const MINUTOS_INICIO_LABORAL = 8 * 60;
 const MINUTOS_FIN_LABORAL = 20 * 60;
-const PASO_MINUTOS = 15;
+const PASO_MINUTOS = 30;
 
 const SELECT_TURNO = `
   SELECT t.*, u.nombre AS creado_por_nombre

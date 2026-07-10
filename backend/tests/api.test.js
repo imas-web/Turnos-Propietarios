@@ -65,16 +65,16 @@ test('rechaza acceso sin token a rutas protegidas', async () => {
   assert.equal(res.status, 401);
 });
 
-test('jimena ve horarios disponibles cada 15 minutos entre 08:00 y 20:00', async () => {
+test('jimena ve horarios disponibles cada 30 minutos entre 08:00 y 20:00', async () => {
   const res = await request(app)
     .get(`/api/turnos/disponibilidad?fecha=${FECHA_FUTURA}`)
     .set('Authorization', `Bearer ${jimenaToken}`);
 
   assert.equal(res.status, 200);
   assert.ok(res.body.slots.includes('08:00'));
-  assert.ok(res.body.slots.includes('19:45'));
+  assert.ok(res.body.slots.includes('19:30'));
   assert.ok(!res.body.slots.includes('20:00'));
-  assert.equal(res.body.slots.length, 48);
+  assert.equal(res.body.slots.length, 24);
 });
 
 let turnoJimenaId;
@@ -94,7 +94,7 @@ test('jimena crea un turno con tutor y telefono', async () => {
 
   assert.equal(res.status, 201);
   assert.equal(res.body.estado, 'pendiente');
-  assert.equal(res.body.hora_fin, '10:15');
+  assert.equal(res.body.hora_fin, '10:30');
   turnoJimenaId = res.body.id;
 });
 
@@ -135,7 +135,7 @@ test('jimena no puede crear otro turno en el mismo horario ya ocupado', async ()
   assert.equal(res.status, 409);
 });
 
-test('rechaza un horario que no es multiplo de 15 minutos', async () => {
+test('rechaza un horario que no es multiplo de 30 minutos', async () => {
   const res = await request(app)
     .post('/api/turnos')
     .set('Authorization', `Bearer ${jimenaToken}`)
