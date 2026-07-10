@@ -3,13 +3,13 @@ import { pool } from '../db.js';
 import { requireAuth, requireRol } from '../middleware/auth.js';
 import { ah } from '../utils/asyncHandler.js';
 import { enviarCorreoConfirmacion } from '../utils/mailer.js';
+import { fechaYHoraActualEnArgentina } from '../utils/fechaArgentina.js';
 
 const router = Router();
 
 const MINUTOS_INICIO_LABORAL = 8 * 60;
 const MINUTOS_FIN_LABORAL = 20 * 60;
 const PASO_MINUTOS = 15;
-const ZONA_HORARIA = 'America/Argentina/Buenos_Aires';
 
 const SELECT_TURNO = `
   SELECT t.*, u.nombre AS creado_por_nombre
@@ -38,25 +38,6 @@ function horaAMinutos(horaHHMM) {
 
 function sumarMinutos(horaHHMM, minutos) {
   return minutosAHora(horaAMinutos(horaHHMM) + minutos);
-}
-
-function fechaYHoraActualEnArgentina() {
-  const formateador = new Intl.DateTimeFormat('en-CA', {
-    timeZone: ZONA_HORARIA,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-  const partes = Object.fromEntries(
-    formateador.formatToParts(new Date()).map((p) => [p.type, p.value])
-  );
-  return {
-    fecha: `${partes.year}-${partes.month}-${partes.day}`,
-    minutos: Number(partes.hour) * 60 + Number(partes.minute),
-  };
 }
 
 router.use(requireAuth);

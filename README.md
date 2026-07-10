@@ -33,6 +33,9 @@ frontend/   Panel (React + Vite)
   despliega la lista (filtrable por día) para **confirmar** (requiere
   cargar un número de DT, y dispara un correo de confirmación al tutor) o
   **rechazar** (con motivo opcional).
+- **Recordatorio automático**: un día antes del turno, si quedó confirmado,
+  se envía un mail de recordatorio al tutor (vía un Vercel Cron Job que
+  corre una vez por día).
 - **Admin**: gestiona (crea, edita, elimina) las cuentas de tipo
   extraccionista y diagnotest desde el panel.
 - Estados de turno: `pendiente`, `confirmado`, `rechazado`, `cancelado`.
@@ -107,6 +110,10 @@ Ver `backend/.env.example`. Lo más relevante:
   ["contraseña de aplicación"](https://myaccount.google.com/apppasswords)
   (no la contraseña normal de la cuenta). Si se deja vacío, el correo no
   se envía y solo queda un aviso en el log del servidor.
+- `CRON_SECRET`: opcional, protege el endpoint `GET /api/cron/recordatorios`
+  que dispara los mails de recordatorio del día previo. Si se define en
+  Vercel, Vercel mismo lo manda como header `Authorization` al invocar el
+  cron (ver `backend/vercel.json`); no requiere ninguna otra configuración.
 
 ## Deploy en Vercel
 

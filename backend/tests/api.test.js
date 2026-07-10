@@ -15,6 +15,7 @@ process.env.ADMIN_PASSWORD = 'admin';
 
 const { createApp } = await import('../src/app.js');
 const { pool, ensureInit } = await import('../src/db.js');
+const { fechaYHoraActualEnArgentina, sumarDias } = await import('../src/utils/fechaArgentina.js');
 const request = (await import('supertest')).default;
 
 const app = createApp();
@@ -308,4 +309,55 @@ test('admin no puede eliminar una extraccionista con turnos asociados', async ()
     .delete(`/api/usuarios/${jimena.id}`)
     .set('Authorization', `Bearer ${adminToken}`);
   assert.equal(res.status, 409);
+});
+
+test('el cron de recordatorios envia solo turnos confirmados para manana y los marca', async () => {
+  const manana = sumarDias(fechaYHoraActualEnArgentina().fecha, 1);
+
+  const creado = await request(app)
+    .post('/api/turnos')
+    .set('Authorization', `Bearer ${jimenaToken}`)
+    .send({
+      tutor: 'Familia Recordatorio',
+      telefono: '11-2222-3333',
+      direccion: 'Calle Recordatorio 1',
+      email: 'recordatorio@test.com',
+      fecha: manana,
+      hora_inicio: '09:00',
+    });
+  assert.equal(creado.status, 201);
+
+  await request(app)
+    .post(`/api/turnos/${creado.body.id}/confirmar`)
+    .set('Authorization', `Bearer ${diagnotestToken}`)
+    .send({ numero_dt: 'DT-REC' });
+
+  const res = await request(app).get('/api/cron/recordatorios');
+  assert.equal(res.status, 200);
+  assert.equal(res.body.fecha, manana);
+  assert.ok(res.body.procesados >= 1);
+
+  const turno = await request(app)
+    .get(`/api/turnos/${creado.body.id}`)
+    .set('Authorization', `Bearer ${jimenaToken}`);
+  assert.equal(turno.body.recordatorio_enviado, true);
+
+  const segundaVez = await request(app).get('/api/cron/recordatorios');
+  assert.equal(segundaVez.status, 200);
+  assert.equal(segundaVez.body.procesados, 0);
+});
+
+test('el cron de recordatorios exige el secreto cuando CRON_SECRET esta configurado', async () => {
+  process.env.CRON_SECRET = 'un-secreto';
+  try {
+    const sinAuth = await request(app).get('/api/cron/recordatorios');
+    assert.equal(sinAuth.status, 401);
+
+    const conAuth = await request(app)
+      .get('/api/cron/recordatorios')
+      .set('Authorization', 'Bearer un-secreto');
+    assert.equal(conAuth.status, 200);
+  } finally {
+    delete process.env.CRON_SECRET;
+  }
 });

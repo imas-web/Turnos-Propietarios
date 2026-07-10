@@ -4,6 +4,7 @@ import { ensureInit } from './db.js';
 import authRoutes from './routes/auth.js';
 import turnosRoutes from './routes/turnos.js';
 import usuariosRoutes from './routes/usuarios.js';
+import cronRoutes from './routes/cron.js';
 
 export function createApp() {
   const app = express();
@@ -20,6 +21,7 @@ export function createApp() {
   app.use('/api/auth', authRoutes);
   app.use('/api/turnos', turnosRoutes);
   app.use('/api/usuarios', usuariosRoutes);
+  app.use('/api/cron', cronRoutes);
 
   app.use((req, res) => {
     res.status(404).json({ error: 'Recurso no encontrado' });

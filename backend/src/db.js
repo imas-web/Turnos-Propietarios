@@ -57,7 +57,8 @@ const SCHEMA_SQL = `
     numero_dt TEXT,
     respondido_en TIMESTAMPTZ,
     creado_por INTEGER REFERENCES usuarios(id),
-    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    recordatorio_enviado BOOLEAN NOT NULL DEFAULT false
   );
 `;
 
@@ -71,6 +72,7 @@ const MIGRACIONES_SQL = `
   ALTER TABLE turnos ADD COLUMN IF NOT EXISTS direccion TEXT;
   ALTER TABLE turnos ADD COLUMN IF NOT EXISTS numero_dt TEXT;
   ALTER TABLE turnos ADD COLUMN IF NOT EXISTS email TEXT;
+  ALTER TABLE turnos ADD COLUMN IF NOT EXISTS recordatorio_enviado BOOLEAN NOT NULL DEFAULT false;
   UPDATE turnos SET tutor = 'Sin dato' WHERE tutor IS NULL;
   ALTER TABLE turnos ALTER COLUMN tutor SET NOT NULL;
   ALTER TABLE turnos DROP COLUMN IF EXISTS propietario_id;

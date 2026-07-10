@@ -49,3 +49,31 @@ export async function enviarCorreoConfirmacion({ to, tutor, turno }) {
   });
   return { enviado: true };
 }
+
+// Envia el recordatorio del dia previo para turnos ya confirmados.
+export async function enviarCorreoRecordatorio({ to, tutor, turno }) {
+  if (!to) return { enviado: false, motivo: 'sin email cargado' };
+
+  const asunto = `Recordatorio: turno manana - ${turno.fecha} ${turno.hora_inicio}`;
+  const texto =
+    `Hola ${tutor},\n\n` +
+    `Te recordamos que manana tenes tu turno de extraccion:\n` +
+    `Fecha: ${turno.fecha}\n` +
+    `Horario: ${turno.hora_inicio} a ${turno.hora_fin}\n` +
+    `Direccion: ${turno.direccion || '-'}\n\n` +
+    `Gracias.`;
+
+  const t = getTransporter();
+  if (!t) {
+    console.log(`[mailer] SMTP no configurado. Recordatorio no enviado a ${to}.`);
+    return { enviado: false, motivo: 'SMTP no configurado' };
+  }
+
+  await t.sendMail({
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    to,
+    subject: asunto,
+    text: texto,
+  });
+  return { enviado: true };
+}
