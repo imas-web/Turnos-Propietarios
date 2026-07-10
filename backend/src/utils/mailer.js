@@ -85,7 +85,7 @@ export async function enviarCorreoConfirmacion({ to, tutor, turno }) {
 // "manana" (ver comentario en routes/cron.js sobre por que puede ser hoy).
 export async function enviarCorreoRecordatorio({ to, tutor, turno }) {
   const esHoy = turno.fecha === fechaYHoraActualEnArgentina().fecha;
-  const cuando = esHoy ? 'hoy' : 'manana';
+  const cuando = esHoy ? 'hoy' : 'mañana';
 
   const asunto = `Recordatorio: turno ${cuando} - ${turno.fecha} ${turno.hora_inicio}`;
   const texto =
