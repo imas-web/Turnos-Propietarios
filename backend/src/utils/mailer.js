@@ -92,7 +92,7 @@ export async function enviarCorreoRecordatorio({ to, tutor, turno }) {
     `Hola ${tutor},\n\n` +
     `Te recordamos que ${cuando} tenes tu turno de extraccion:\n` +
     `Fecha: ${turno.fecha}\n` +
-    `Horario: ${turno.hora_inicio} a ${turno.hora_fin}\n` +
+    `Horario: ${turno.hora_inicio}\n` +
     `Direccion: ${turno.direccion || '-'}\n\n` +
     `Gracias.`;
 
