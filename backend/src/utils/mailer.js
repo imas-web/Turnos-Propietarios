@@ -74,7 +74,7 @@ export async function enviarCorreoConfirmacion({ to, tutor, turno }) {
     `Hola ${tutor},\n\n` +
     `Te confirmamos tu turno de extraccion:\n` +
     `Fecha: ${turno.fecha}\n` +
-    `Horario: ${turno.hora_inicio} a ${turno.hora_fin}\n` +
+    `Horario: ${turno.hora_inicio}\n` +
     `Direccion: ${turno.direccion || '-'}\n\n` +
     `Gracias.`;
 
