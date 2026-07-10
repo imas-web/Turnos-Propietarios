@@ -21,16 +21,17 @@ frontend/   Panel (React + Vite)
 - **Login por usuario** (JWT), con cuatro cuentas iniciales: `jimena`,
   `daniela` (rol "extraccionista"), `diagnotest` (rol "diagnotest") y
   `admin` (rol "admin").
-- **Extraccionista** (Jimena/Daniela): agenda (lista por día) de sus propios
-  turnos ya otorgados, y un botón "Agregar turno nuevo" con Tutor, Teléfono,
-  Dirección, Día y Horario. Los horarios se ofrecen cada 15 minutos entre
-  las 08:00 y las 20:00, mostrando únicamente los que esa extraccionista
-  todavía tiene libres ese día. No ve los turnos de otra extraccionista, y
-  puede editar o cancelar los suyos.
+- **Extraccionista** (Jimena/Daniela): agenda (lista por día, filtrable por
+  fecha y estado) de sus propios turnos ya otorgados, y un botón "Agregar
+  turno nuevo" con Tutor, Teléfono, Dirección, Email, Día y Horario. Los
+  horarios se ofrecen cada 15 minutos entre las 08:00 y las 20:00, mostrando
+  únicamente los que esa extraccionista todavía tiene libres ese día. No ve
+  los turnos de otra extraccionista, y puede editar o cancelar los suyos.
 - **Diagnotest**: ve una grilla del día (horarios en filas, una columna por
   extraccionista) con los turnos sin confirmar en rojo y los confirmados en
   verde. Un botón "Turnos pendientes de confirmación" en la barra lateral
-  despliega la lista para **confirmar** (requiere cargar un número de DT) o
+  despliega la lista (filtrable por día) para **confirmar** (requiere
+  cargar un número de DT, y dispara un correo de confirmación al tutor) o
   **rechazar** (con motivo opcional).
 - **Admin**: gestiona (crea, edita, elimina) las cuentas de tipo
   extraccionista y diagnotest desde el panel.
@@ -99,6 +100,13 @@ Ver `backend/.env.example`. Lo más relevante:
   `DIAGNOTEST_USER` / `DIAGNOTEST_PASSWORD`, `ADMIN_USER` / `ADMIN_PASSWORD`:
   credenciales de los usuarios iniciales (se crean solos la primera vez que
   arranca el server si no existen).
+- `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM`:
+  opcionales, para enviar el correo de confirmación al tutor cuando
+  Diagnotest confirma un turno. Con Gmail: `SMTP_HOST=smtp.gmail.com`,
+  `SMTP_PORT=465`, `SMTP_USER` la cuenta completa, `SMTP_PASS` una
+  ["contraseña de aplicación"](https://myaccount.google.com/apppasswords)
+  (no la contraseña normal de la cuenta). Si se deja vacío, el correo no
+  se envía y solo queda un aviso en el log del servidor.
 
 ## Deploy en Vercel
 

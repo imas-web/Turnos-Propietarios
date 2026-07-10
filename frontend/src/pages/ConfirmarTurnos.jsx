@@ -182,6 +182,7 @@ export default function ConfirmarTurnos() {
                   <div className="muted">{t.creado_por_nombre}</div>
                   <div className="muted">{t.telefono}</div>
                   <div className="muted">{t.direccion}</div>
+                  <div className="muted">{t.email}</div>
                   <input
                     placeholder="Numero de DT (requerido para confirmar)"
                     value={dtPorTurno[t.id] || ''}

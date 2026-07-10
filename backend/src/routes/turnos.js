@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { pool } from '../db.js';
 import { requireAuth, requireRol } from '../middleware/auth.js';
 import { ah } from '../utils/asyncHandler.js';
+import { enviarCorreoConfirmacion } from '../utils/mailer.js';
 
 const router = Router();
 
@@ -151,11 +152,11 @@ router.post(
   '/',
   requireRol('extraccionista'),
   ah(async (req, res) => {
-    const { tutor, telefono, direccion, fecha, hora_inicio } = req.body || {};
+    const { tutor, telefono, direccion, email, fecha, hora_inicio } = req.body || {};
 
-    if (!tutor || !telefono || !direccion || !fecha || !hora_inicio) {
+    if (!tutor || !telefono || !direccion || !email || !fecha || !hora_inicio) {
       return res.status(400).json({
-        error: 'tutor, telefono, direccion, fecha y hora_inicio son requeridos',
+        error: 'tutor, telefono, direccion, email y hora_inicio son requeridos',
       });
     }
     if (!generarSlots().includes(hora_inicio)) {
@@ -166,10 +167,10 @@ router.post(
 
     try {
       const { rows: insertedRows } = await pool.query(
-        `INSERT INTO turnos (tutor, telefono, direccion, fecha, hora_inicio, hora_fin, creado_por)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO turnos (tutor, telefono, direccion, email, fecha, hora_inicio, hora_fin, creado_por)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING id`,
-        [tutor, telefono, direccion, fecha, hora_inicio, hora_fin, req.usuario.sub]
+        [tutor, telefono, direccion, email, fecha, hora_inicio, hora_fin, req.usuario.sub]
       );
 
       const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [
@@ -196,19 +197,20 @@ router.put(
     const existing = existingRows[0];
     if (!existing) return res.status(404).json({ error: 'Turno no encontrado' });
 
-    const { tutor, telefono, direccion, fecha, hora_inicio } = req.body || {};
+    const { tutor, telefono, direccion, email, fecha, hora_inicio } = req.body || {};
     const nuevaHoraInicio = hora_inicio ?? existing.hora_inicio;
     const nuevaHoraFin = hora_inicio ? sumarMinutos(hora_inicio, PASO_MINUTOS) : existing.hora_fin;
 
     try {
       await pool.query(
         `UPDATE turnos
-         SET tutor = $1, telefono = $2, direccion = $3, fecha = $4, hora_inicio = $5, hora_fin = $6
-         WHERE id = $7`,
+         SET tutor = $1, telefono = $2, direccion = $3, email = $4, fecha = $5, hora_inicio = $6, hora_fin = $7
+         WHERE id = $8`,
         [
           tutor ?? existing.tutor,
           telefono ?? existing.telefono,
           direccion ?? existing.direccion,
+          email ?? existing.email,
           fecha ?? existing.fecha,
           nuevaHoraInicio,
           nuevaHoraFin,
@@ -286,7 +288,15 @@ router.post(
     );
 
     const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
-    res.json(rows[0]);
+    const turno = rows[0];
+
+    try {
+      await enviarCorreoConfirmacion({ to: turno.email, tutor: turno.tutor, turno });
+    } catch (err) {
+      console.error('No se pudo enviar el correo de confirmacion:', err);
+    }
+
+    res.json(turno);
   })
 );
 

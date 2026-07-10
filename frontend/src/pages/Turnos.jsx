@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
-const FORM_VACIO = { tutor: '', telefono: '', direccion: '', fecha: '', hora_inicio: '' };
+const FORM_VACIO = { tutor: '', telefono: '', direccion: '', email: '', fecha: '', hora_inicio: '' };
 
 const ETIQUETAS_ESTADO = {
   pendiente: 'Pendiente',
@@ -130,6 +130,7 @@ export default function Turnos() {
       tutor: turno.tutor,
       telefono: turno.telefono,
       direccion: turno.direccion,
+      email: turno.email,
       fecha: turno.fecha,
       hora_inicio: turno.hora_inicio,
     });
@@ -218,6 +219,10 @@ export default function Turnos() {
               <input name="direccion" value={form.direccion} onChange={onChange} required />
             </div>
             <div className="field" style={{ marginTop: '0.75rem' }}>
+              <label>Email</label>
+              <input name="email" type="email" value={form.email} onChange={onChange} required />
+            </div>
+            <div className="field" style={{ marginTop: '0.75rem' }}>
               <label>Dia</label>
               <input
                 type="date"
@@ -302,6 +307,7 @@ export default function Turnos() {
                     <strong>{t.tutor}</strong>
                     <div className="muted">{t.telefono}</div>
                     <div className="muted">{t.direccion}</div>
+                    <div className="muted">{t.email}</div>
                     {t.estado === 'rechazado' && t.motivo_rechazo && (
                       <div className="muted">Motivo: {t.motivo_rechazo}</div>
                     )}
