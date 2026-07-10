@@ -26,7 +26,10 @@ frontend/   Panel (React + Vite)
   turno nuevo" con Tutor, Teléfono, Dirección, Email, Día y Horario. Los
   horarios se ofrecen cada 15 minutos entre las 08:00 y las 20:00, mostrando
   únicamente los que esa extraccionista todavía tiene libres ese día. No ve
-  los turnos de otra extraccionista, y puede editar o cancelar los suyos.
+  los turnos de otra extraccionista ni los que fueron rechazados, y puede
+  editar o cancelar los suyos. Al registrar el turno, se le envía un mail
+  al tutor pidiéndole los datos de la mascota por WhatsApp y los datos
+  bancarios para el pago.
 - **Diagnotest**: ve una grilla del día (horarios en filas, una columna por
   extraccionista) con los turnos sin confirmar en rojo y los confirmados en
   verde. Un botón "Turnos pendientes de confirmación" en la barra lateral

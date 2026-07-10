@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { pool } from '../db.js';
 import { requireAuth, requireRol } from '../middleware/auth.js';
 import { ah } from '../utils/asyncHandler.js';
-import { enviarCorreoConfirmacion } from '../utils/mailer.js';
+import { enviarCorreoConfirmacion, enviarCorreoDatosTurno } from '../utils/mailer.js';
 import { fechaYHoraActualEnArgentina } from '../utils/fechaArgentina.js';
 
 const router = Router();
@@ -162,7 +162,19 @@ router.post(
       const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [
         insertedRows[0].id,
       ]);
-      res.status(201).json(rows[0]);
+      const turno = rows[0];
+
+      try {
+        await enviarCorreoDatosTurno({ to: turno.email, tutor: turno.tutor, turno });
+      } catch (err) {
+        console.error(
+          'No se pudo enviar el correo de datos del turno:',
+          err.code || '',
+          err.response || err.message || err
+        );
+      }
+
+      res.status(201).json(turno);
     } catch (err) {
       if (err.code === '23505') {
         return res.status(409).json({ error: 'Ese horario ya esta ocupado' });

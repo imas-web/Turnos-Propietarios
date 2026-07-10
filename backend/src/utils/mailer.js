@@ -21,23 +21,12 @@ function getTransporter() {
   return transporter;
 }
 
-// Envia el correo de confirmacion cuando Diagnotest confirma un turno. Si
-// no hay SMTP configurado, deja constancia en el log y no bloquea el flujo.
-export async function enviarCorreoConfirmacion({ to, tutor, turno }) {
+async function enviarCorreo({ to, asunto, texto }) {
   if (!to) return { enviado: false, motivo: 'sin email cargado' };
-
-  const asunto = `Turno confirmado - ${turno.fecha} ${turno.hora_inicio}`;
-  const texto =
-    `Hola ${tutor},\n\n` +
-    `Te confirmamos tu turno de extraccion:\n` +
-    `Fecha: ${turno.fecha}\n` +
-    `Horario: ${turno.hora_inicio} a ${turno.hora_fin}\n` +
-    `Direccion: ${turno.direccion || '-'}\n\n` +
-    `Gracias.`;
 
   const t = getTransporter();
   if (!t) {
-    console.log(`[mailer] SMTP no configurado. Correo de confirmacion no enviado a ${to}.`);
+    console.log(`[mailer] SMTP no configurado. Correo "${asunto}" no enviado a ${to}.`);
     return { enviado: false, motivo: 'SMTP no configurado' };
   }
 
@@ -50,10 +39,49 @@ export async function enviarCorreoConfirmacion({ to, tutor, turno }) {
   return { enviado: true };
 }
 
+// Envia el correo con las instrucciones para whatsapp/pago cuando la
+// extraccionista registra un turno nuevo.
+export async function enviarCorreoDatosTurno({ to, tutor, turno }) {
+  const asunto = `Turno registrado - ${turno.fecha} ${turno.hora_inicio}`;
+  const texto =
+    `Hola ${tutor},\n\n` +
+    `Registramos tu turno de extraccion para el ${turno.fecha} a las ${turno.hora_inicio}.\n\n` +
+    `Para poder procesar la extraccion, por favor envianos los siguientes datos por WhatsApp al 1140611502:\n\n` +
+    `- Nombre de la mascota:\n` +
+    `- Especie (canino, felino, otro), Raza, Sexo y Edad de la mascota:\n` +
+    `- Nombre completo del responsable:\n` +
+    `- Detallar Nº de historia clinica (en caso de tener):\n` +
+    `- Telefono de contacto:\n` +
+    `- Direccion de retiro/extraccion (agregar entre calles y zona de residencia):\n` +
+    `- Direccion de correo electronico:\n\n` +
+    `Importante tener la orden impresa al momento del retiro de la muestra con NUM. de SEGUIMIENTO indicado por Diagnotest, SINO NO SERA RETIRADA LA MUESTRA.\n\n` +
+    `DATOS BANCARIOS - Forma de pago (Transferencia, deposito o mercadopago):\n\n` +
+    `Banco: Frances BBVA\n` +
+    `Nº C/C: 151-9559/9\n` +
+    `CBU: 0170151320000000955991\n` +
+    `Alias: DIAGNOTEST\n\n` +
+    `RECUERDE que para analisis de sangre, el ayuno es entre 8 a 12 hs, consulte segun estudio. El valor NO incluye extraccion.\n\n` +
+    `WhatsApp: 1140611502`;
+
+  return enviarCorreo({ to, asunto, texto });
+}
+
+// Envia el correo de confirmacion cuando Diagnotest confirma un turno.
+export async function enviarCorreoConfirmacion({ to, tutor, turno }) {
+  const asunto = `Turno confirmado - ${turno.fecha} ${turno.hora_inicio}`;
+  const texto =
+    `Hola ${tutor},\n\n` +
+    `Te confirmamos tu turno de extraccion:\n` +
+    `Fecha: ${turno.fecha}\n` +
+    `Horario: ${turno.hora_inicio} a ${turno.hora_fin}\n` +
+    `Direccion: ${turno.direccion || '-'}\n\n` +
+    `Gracias.`;
+
+  return enviarCorreo({ to, asunto, texto });
+}
+
 // Envia el recordatorio del dia previo para turnos ya confirmados.
 export async function enviarCorreoRecordatorio({ to, tutor, turno }) {
-  if (!to) return { enviado: false, motivo: 'sin email cargado' };
-
   const asunto = `Recordatorio: turno manana - ${turno.fecha} ${turno.hora_inicio}`;
   const texto =
     `Hola ${tutor},\n\n` +
@@ -63,17 +91,5 @@ export async function enviarCorreoRecordatorio({ to, tutor, turno }) {
     `Direccion: ${turno.direccion || '-'}\n\n` +
     `Gracias.`;
 
-  const t = getTransporter();
-  if (!t) {
-    console.log(`[mailer] SMTP no configurado. Recordatorio no enviado a ${to}.`);
-    return { enviado: false, motivo: 'SMTP no configurado' };
-  }
-
-  await t.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to,
-    subject: asunto,
-    text: texto,
-  });
-  return { enviado: true };
+  return enviarCorreo({ to, asunto, texto });
 }
