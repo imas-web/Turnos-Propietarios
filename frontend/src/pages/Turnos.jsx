@@ -38,7 +38,6 @@ function agruparPorFecha(turnos) {
 export default function Turnos() {
   const { token } = useAuth();
   const [turnos, setTurnos] = useState([]);
-  const [slots, setSlots] = useState([]);
   const [form, setForm] = useState(FORM_VACIO);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [editando, setEditando] = useState(null);
@@ -47,7 +46,6 @@ export default function Turnos() {
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(true);
-  const [cargandoSlots, setCargandoSlots] = useState(false);
 
   const cargarTurnos = async (estado = filtroEstado, fecha = filtroFecha) => {
     setCargando(true);
@@ -88,43 +86,17 @@ export default function Turnos() {
     await cargarTurnos(filtroEstado, '');
   };
 
-  const cargarSlots = async (fecha, incluirHoraPropia) => {
-    if (!fecha) {
-      setSlots([]);
-      return;
-    }
-    setCargandoSlots(true);
-    try {
-      const data = await api.obtenerDisponibilidad(token, fecha);
-      const disponibles = new Set(data.slots);
-      if (incluirHoraPropia) disponibles.add(incluirHoraPropia);
-      setSlots([...disponibles].sort());
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setCargandoSlots(false);
-    }
-  };
-
-  const onFechaChange = async (e) => {
-    const fecha = e.target.value;
-    const esLaFechaOriginal = editando && fecha === editando.fecha;
-    setForm({ ...form, fecha, hora_inicio: esLaFechaOriginal ? editando.hora_inicio : '' });
-    await cargarSlots(fecha, esLaFechaOriginal ? editando.hora_inicio : null);
-  };
-
   const onChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const abrirFormulario = () => {
     setEditando(null);
     setForm(FORM_VACIO);
-    setSlots([]);
     setMostrarForm(true);
     setMensaje('');
     setError('');
   };
 
-  const abrirEdicion = async (turno) => {
+  const abrirEdicion = (turno) => {
     setEditando(turno);
     setForm({
       tutor: turno.tutor,
@@ -137,14 +109,12 @@ export default function Turnos() {
     setMostrarForm(true);
     setMensaje('');
     setError('');
-    await cargarSlots(turno.fecha, turno.hora_inicio);
   };
 
   const cerrarFormulario = () => {
     setMostrarForm(false);
     setEditando(null);
     setForm(FORM_VACIO);
-    setSlots([]);
   };
 
   const onSubmit = async (e) => {
@@ -229,34 +199,21 @@ export default function Turnos() {
                 name="fecha"
                 min={hoy}
                 value={form.fecha}
-                onChange={onFechaChange}
+                onChange={onChange}
                 required
               />
             </div>
             <div className="field" style={{ marginTop: '0.75rem' }}>
               <label>Horario</label>
-              <select
+              <input
+                type="time"
                 name="hora_inicio"
+                min="08:00"
+                max="19:59"
                 value={form.hora_inicio}
                 onChange={onChange}
-                disabled={!form.fecha || cargandoSlots}
                 required
-              >
-                <option value="">
-                  {!form.fecha
-                    ? 'Elegi un dia primero'
-                    : cargandoSlots
-                      ? 'Cargando horarios...'
-                      : slots.length === 0
-                        ? 'No hay horarios disponibles'
-                        : 'Seleccionar...'}
-                </option>
-                {slots.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
             <div className="actions-row" style={{ marginTop: '1rem' }}>
               <button className="btn btn-primary" type="submit">

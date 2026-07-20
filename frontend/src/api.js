@@ -26,8 +26,6 @@ export const api = {
     const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString();
     return request(`/turnos${query ? `?${query}` : ''}`, { token });
   },
-  obtenerDisponibilidad: (token, fecha) =>
-    request(`/turnos/disponibilidad?fecha=${fecha}`, { token }),
   obtenerExtraccionistas: (token) => request('/turnos/extraccionistas', { token }),
   crearTurno: (token, data) => request('/turnos', { method: 'POST', body: data, token }),
   actualizarTurno: (token, id, data) => request(`/turnos/${id}`, { method: 'PUT', body: data, token }),

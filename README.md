@@ -23,19 +23,20 @@ frontend/   Panel (React + Vite)
   `admin` (rol "admin").
 - **Extraccionista** (Jimena/Daniela): agenda (lista por día, filtrable por
   fecha y estado) de sus propios turnos ya otorgados, y un botón "Agregar
-  turno nuevo" con Tutor, Teléfono, Dirección, Email, Día y Horario. Los
-  horarios se ofrecen cada 30 minutos entre las 08:00 y las 20:00, mostrando
-  únicamente los que esa extraccionista todavía tiene libres ese día. No ve
-  los turnos de otra extraccionista ni los que fueron rechazados, y puede
+  turno nuevo" con Tutor, Teléfono, Dirección, Email, Día y Horario. El
+  horario se elige con un selector de hora libre (como poner una alarma),
+  sin pasos fijos, dentro del horario laboral (08:00 a 20:00). No ve los
+  turnos de otra extraccionista ni los que fueron rechazados, y puede
   editar o cancelar los suyos. Al registrar el turno, se le envía un mail
   al tutor pidiéndole los datos de la mascota por WhatsApp y los datos
   bancarios para el pago.
-- **Diagnotest**: ve una grilla del día (horarios en filas, una columna por
-  extraccionista) con los turnos sin confirmar en rojo y los confirmados en
-  verde. Un botón "Turnos pendientes de confirmación" en la barra lateral
-  despliega la lista (filtrable por día) para **confirmar** (requiere
-  cargar un número de DT, y dispara un correo de confirmación al tutor) o
-  **rechazar** (con motivo opcional).
+- **Diagnotest**: ve una grilla del día (una fila por cada horario
+  realmente usado ese día, una columna por extraccionista) con los turnos
+  sin confirmar en rojo y los confirmados en verde. Un botón "Turnos
+  pendientes de confirmación" en la barra lateral despliega la lista
+  (filtrable por día) para **confirmar** (requiere cargar un número de DT,
+  y dispara un correo de confirmación al tutor) o **rechazar** (con motivo
+  opcional).
 - **Recordatorio automático**: un día antes del turno, si quedó confirmado,
   se envía un mail de recordatorio al tutor (vía un Vercel Cron Job que
   corre una vez por día).

@@ -3,27 +3,19 @@ import { pool } from '../db.js';
 import { requireAuth, requireRol } from '../middleware/auth.js';
 import { ah } from '../utils/asyncHandler.js';
 import { enviarCorreoConfirmacion, enviarCorreoDatosTurno } from '../utils/mailer.js';
-import { fechaYHoraActualEnArgentina } from '../utils/fechaArgentina.js';
 
 const router = Router();
 
 const MINUTOS_INICIO_LABORAL = 8 * 60;
 const MINUTOS_FIN_LABORAL = 20 * 60;
-const PASO_MINUTOS = 30;
+const DURACION_MINUTOS = 30;
+const HORA_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 const SELECT_TURNO = `
   SELECT t.*, u.nombre AS creado_por_nombre
   FROM turnos t
   LEFT JOIN usuarios u ON u.id = t.creado_por
 `;
-
-function generarSlots() {
-  const slots = [];
-  for (let min = MINUTOS_INICIO_LABORAL; min < MINUTOS_FIN_LABORAL; min += PASO_MINUTOS) {
-    slots.push(minutosAHora(min));
-  }
-  return slots;
-}
 
 function minutosAHora(minutos) {
   const h = String(Math.floor(minutos / 60) % 24).padStart(2, '0');
@@ -40,34 +32,16 @@ function sumarMinutos(horaHHMM, minutos) {
   return minutosAHora(horaAMinutos(horaHHMM) + minutos);
 }
 
+// La extraccionista puede elegir cualquier horario (como al poner una
+// alarma), no solo horarios fijos cada tantos minutos; solo se exige que
+// caiga dentro del horario laboral.
+function horaValida(horaHHMM) {
+  if (typeof horaHHMM !== 'string' || !HORA_REGEX.test(horaHHMM)) return false;
+  const minutos = horaAMinutos(horaHHMM);
+  return minutos >= MINUTOS_INICIO_LABORAL && minutos < MINUTOS_FIN_LABORAL;
+}
+
 router.use(requireAuth);
-
-router.get(
-  '/disponibilidad',
-  requireRol('extraccionista'),
-  ah(async (req, res) => {
-    const { fecha } = req.query;
-    if (!fecha) return res.status(400).json({ error: 'fecha es requerida' });
-
-    const { rows } = await pool.query(
-      `SELECT hora_inicio FROM turnos
-       WHERE creado_por = $1 AND fecha = $2 AND estado IN ('pendiente', 'confirmado')`,
-      [req.usuario.sub, fecha]
-    );
-    const ocupados = new Set(rows.map((r) => r.hora_inicio));
-
-    const ahora = fechaYHoraActualEnArgentina();
-    const esHoy = fecha === ahora.fecha;
-
-    const slots = generarSlots().filter((slot) => {
-      if (ocupados.has(slot)) return false;
-      if (esHoy && horaAMinutos(slot) <= ahora.minutos) return false;
-      return true;
-    });
-
-    res.json({ slots });
-  })
-);
 
 // Lista liviana de extraccionistas activas, usada por Diagnotest para
 // armar las columnas de la grilla del dia.
@@ -145,11 +119,11 @@ router.post(
         error: 'tutor, telefono, direccion, email y hora_inicio son requeridos',
       });
     }
-    if (!generarSlots().includes(hora_inicio)) {
+    if (!horaValida(hora_inicio)) {
       return res.status(400).json({ error: 'Horario invalido' });
     }
 
-    const hora_fin = sumarMinutos(hora_inicio, PASO_MINUTOS);
+    const hora_fin = sumarMinutos(hora_inicio, DURACION_MINUTOS);
 
     try {
       const { rows: insertedRows } = await pool.query(
@@ -196,8 +170,13 @@ router.put(
     if (!existing) return res.status(404).json({ error: 'Turno no encontrado' });
 
     const { tutor, telefono, direccion, email, fecha, hora_inicio } = req.body || {};
+    if (hora_inicio && !horaValida(hora_inicio)) {
+      return res.status(400).json({ error: 'Horario invalido' });
+    }
     const nuevaHoraInicio = hora_inicio ?? existing.hora_inicio;
-    const nuevaHoraFin = hora_inicio ? sumarMinutos(hora_inicio, PASO_MINUTOS) : existing.hora_fin;
+    const nuevaHoraFin = hora_inicio
+      ? sumarMinutos(hora_inicio, DURACION_MINUTOS)
+      : existing.hora_fin;
 
     try {
       await pool.query(

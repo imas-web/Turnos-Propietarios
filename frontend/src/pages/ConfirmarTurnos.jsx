@@ -2,22 +2,6 @@ import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
-const MINUTOS_INICIO_LABORAL = 8 * 60;
-const MINUTOS_FIN_LABORAL = 20 * 60;
-const PASO_MINUTOS = 30;
-
-function generarSlots() {
-  const slots = [];
-  for (let min = MINUTOS_INICIO_LABORAL; min < MINUTOS_FIN_LABORAL; min += PASO_MINUTOS) {
-    const h = String(Math.floor(min / 60)).padStart(2, '0');
-    const m = String(min % 60).padStart(2, '0');
-    slots.push(`${h}:${m}`);
-  }
-  return slots;
-}
-
-const SLOTS = generarSlots();
-
 function formatearFecha(fechaStr) {
   const [anio, mes, dia] = fechaStr.split('-').map(Number);
   const fecha = new Date(anio, mes - 1, dia);
@@ -138,6 +122,11 @@ export default function ConfirmarTurnos() {
     (t) => t.estado === 'pendiente' || t.estado === 'confirmado'
   );
 
+  // Como cada extraccionista puede elegir cualquier horario (no solo horas
+  // fijas), las filas de la grilla son los horarios que realmente se usaron
+  // ese dia, no una lista de horarios predefinidos.
+  const slotsDelDia = [...new Set(turnosVisiblesGrilla.map((t) => t.hora_inicio))].sort();
+
   const celda = (extraccionistaId, slot) =>
     turnosVisiblesGrilla.find(
       (t) => t.creado_por === extraccionistaId && t.hora_inicio === slot
@@ -232,6 +221,8 @@ export default function ConfirmarTurnos() {
             <p className="muted">Cargando...</p>
           ) : extraccionistas.length === 0 ? (
             <p className="muted">No hay extraccionistas cargadas.</p>
+          ) : slotsDelDia.length === 0 ? (
+            <p className="muted">No hay turnos para este dia.</p>
           ) : (
             <div className="grilla-scroll">
               <table className="grilla">
@@ -244,7 +235,7 @@ export default function ConfirmarTurnos() {
                   </tr>
                 </thead>
                 <tbody>
-                  {SLOTS.map((slot) => (
+                  {slotsDelDia.map((slot) => (
                     <tr key={slot}>
                       <td className="grilla-hora">{slot}</td>
                       {extraccionistas.map((ex) => {

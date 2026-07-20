@@ -65,18 +65,6 @@ test('rechaza acceso sin token a rutas protegidas', async () => {
   assert.equal(res.status, 401);
 });
 
-test('jimena ve horarios disponibles cada 30 minutos entre 08:00 y 20:00', async () => {
-  const res = await request(app)
-    .get(`/api/turnos/disponibilidad?fecha=${FECHA_FUTURA}`)
-    .set('Authorization', `Bearer ${jimenaToken}`);
-
-  assert.equal(res.status, 200);
-  assert.ok(res.body.slots.includes('08:00'));
-  assert.ok(res.body.slots.includes('19:30'));
-  assert.ok(!res.body.slots.includes('20:00'));
-  assert.equal(res.body.slots.length, 24);
-});
-
 let turnoJimenaId;
 
 test('jimena crea un turno con tutor y telefono', async () => {
@@ -96,13 +84,6 @@ test('jimena crea un turno con tutor y telefono', async () => {
   assert.equal(res.body.estado, 'pendiente');
   assert.equal(res.body.hora_fin, '10:30');
   turnoJimenaId = res.body.id;
-});
-
-test('ese horario ya no aparece disponible para jimena', async () => {
-  const res = await request(app)
-    .get(`/api/turnos/disponibilidad?fecha=${FECHA_FUTURA}`)
-    .set('Authorization', `Bearer ${jimenaToken}`);
-  assert.ok(!res.body.slots.includes('10:00'));
 });
 
 test('daniela si puede tomar el mismo horario (agenda por extraccionista)', async () => {
@@ -135,7 +116,7 @@ test('jimena no puede crear otro turno en el mismo horario ya ocupado', async ()
   assert.equal(res.status, 409);
 });
 
-test('rechaza un horario que no es multiplo de 30 minutos', async () => {
+test('acepta cualquier horario dentro del horario laboral, no solo cada 30 minutos', async () => {
   const res = await request(app)
     .post('/api/turnos')
     .set('Authorization', `Bearer ${jimenaToken}`)
@@ -146,6 +127,51 @@ test('rechaza un horario que no es multiplo de 30 minutos', async () => {
       email: 'ruiz@test.com',
       fecha: FECHA_FUTURA,
       hora_inicio: '10:07',
+    });
+  assert.equal(res.status, 201);
+  assert.equal(res.body.hora_inicio, '10:07');
+  assert.equal(res.body.hora_fin, '10:37');
+});
+
+test('rechaza un horario fuera del horario laboral (antes de las 08:00 o desde las 20:00)', async () => {
+  const antesDeHorario = await request(app)
+    .post('/api/turnos')
+    .set('Authorization', `Bearer ${jimenaToken}`)
+    .send({
+      tutor: 'Familia Temprano',
+      telefono: '11-2222-3333',
+      direccion: 'Calle Temprano 1',
+      email: 'temprano@test.com',
+      fecha: FECHA_FUTURA,
+      hora_inicio: '07:30',
+    });
+  assert.equal(antesDeHorario.status, 400);
+
+  const despuesDeHorario = await request(app)
+    .post('/api/turnos')
+    .set('Authorization', `Bearer ${jimenaToken}`)
+    .send({
+      tutor: 'Familia Tarde',
+      telefono: '11-3333-4444',
+      direccion: 'Calle Tarde 1',
+      email: 'tarde@test.com',
+      fecha: FECHA_FUTURA,
+      hora_inicio: '20:00',
+    });
+  assert.equal(despuesDeHorario.status, 400);
+});
+
+test('rechaza un horario con formato invalido', async () => {
+  const res = await request(app)
+    .post('/api/turnos')
+    .set('Authorization', `Bearer ${jimenaToken}`)
+    .send({
+      tutor: 'Familia Formato',
+      telefono: '11-4444-5555',
+      direccion: 'Calle Formato 1',
+      email: 'formato@test.com',
+      fecha: FECHA_FUTURA,
+      hora_inicio: '25:99',
     });
   assert.equal(res.status, 400);
 });
@@ -164,7 +190,7 @@ test('diagnotest ve todos los turnos pendientes de todas las extraccionistas', a
     .get('/api/turnos')
     .set('Authorization', `Bearer ${diagnotestToken}`);
   assert.equal(res.status, 200);
-  assert.equal(res.body.length, 2);
+  assert.equal(res.body.length, 3);
 });
 
 test('jimena no puede confirmar turnos (solo diagnotest)', async () => {
@@ -239,9 +265,17 @@ test('diagnotest rechaza un turno pendiente con motivo', async () => {
 
 test('el horario de un turno rechazado vuelve a estar disponible', async () => {
   const res = await request(app)
-    .get(`/api/turnos/disponibilidad?fecha=${FECHA_FUTURA}`)
-    .set('Authorization', `Bearer ${jimenaToken}`);
-  assert.ok(res.body.slots.includes('11:00'));
+    .post('/api/turnos')
+    .set('Authorization', `Bearer ${jimenaToken}`)
+    .send({
+      tutor: 'Familia Reutiliza Horario',
+      telefono: '11-7777-8888',
+      direccion: 'Calle Reutiliza 1',
+      email: 'reutiliza@test.com',
+      fecha: FECHA_FUTURA,
+      hora_inicio: '11:00',
+    });
+  assert.equal(res.status, 201);
 });
 
 test('a jimena no se le muestran sus propios turnos rechazados', async () => {
