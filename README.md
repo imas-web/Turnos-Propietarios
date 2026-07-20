@@ -23,7 +23,8 @@ frontend/   Panel (React + Vite)
   `admin` (rol "admin").
 - **Extraccionista** (Jimena/Daniela): agenda (lista por día, filtrable por
   fecha y estado) de sus propios turnos ya otorgados, y un botón "Agregar
-  turno nuevo" con Tutor, Teléfono, Dirección, Email, Día y Horario. El
+  turno nuevo" con Paciente, Tutor, Teléfono, Dirección, Email, Día y
+  Horario. El
   horario se elige con un selector de hora libre (como poner una alarma),
   sin pasos fijos, dentro del horario laboral (08:00 a 20:00). No ve los
   turnos de otra extraccionista ni los que fueron rechazados, y puede

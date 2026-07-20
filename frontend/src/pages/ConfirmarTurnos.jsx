@@ -167,7 +167,8 @@ export default function ConfirmarTurnos() {
                   <div className="agenda-hora">
                     {formatearFecha(t.fecha)} · {t.hora_inicio}
                   </div>
-                  <strong>{t.tutor}</strong>
+                  <strong>{t.paciente}</strong>
+                  <div className="muted">Tutor: {t.tutor}</div>
                   <div className="muted">{t.creado_por_nombre}</div>
                   <div className="muted">{t.telefono}</div>
                   <div className="muted">{t.direccion}</div>
@@ -249,7 +250,9 @@ export default function ConfirmarTurnos() {
                                 : 'grilla-celda'
                             }
                           >
-                            {turno && <span title={turno.tutor}>{turno.tutor}</span>}
+                            {turno && (
+                              <span title={`Tutor: ${turno.tutor}`}>{turno.paciente}</span>
+                            )}
                           </td>
                         );
                       })}

@@ -46,9 +46,8 @@ export async function enviarCorreoDatosTurno({ to, tutor, turno }) {
   const asunto = `Turno registrado - ${turno.fecha} ${turno.hora_inicio}`;
   const texto =
     `Hola ${tutor},\n\n` +
-    `Registramos tu turno de extraccion para el ${turno.fecha} a las ${turno.hora_inicio}.\n\n` +
+    `Registramos el turno de extraccion de ${turno.paciente} para el ${turno.fecha} a las ${turno.hora_inicio}.\n\n` +
     `Para poder procesar la extraccion, por favor envianos los siguientes datos por WhatsApp al 1140611502:\n\n` +
-    `- Nombre de la mascota:\n` +
     `- Especie (canino, felino, otro), Raza, Sexo y Edad de la mascota:\n` +
     `- Nombre completo del responsable:\n` +
     `- Detallar Nº de historia clinica (en caso de tener):\n` +
@@ -72,7 +71,7 @@ export async function enviarCorreoConfirmacion({ to, tutor, turno }) {
   const asunto = `Turno confirmado - ${turno.fecha} ${turno.hora_inicio}`;
   const texto =
     `Hola ${tutor},\n\n` +
-    `Te confirmamos tu turno de extraccion:\n` +
+    `Te confirmamos el turno de extraccion de ${turno.paciente}:\n` +
     `Fecha: ${turno.fecha}\n` +
     `Horario: ${turno.hora_inicio}\n` +
     `Direccion: ${turno.direccion || '-'}\n\n` +
@@ -90,7 +89,7 @@ export async function enviarCorreoRecordatorio({ to, tutor, turno }) {
   const asunto = `Recordatorio: turno ${cuando} - ${turno.fecha} ${turno.hora_inicio}`;
   const texto =
     `Hola ${tutor},\n\n` +
-    `Te recordamos que ${cuando} tenes tu turno de extraccion:\n` +
+    `Te recordamos que ${cuando} tenes el turno de extraccion de ${turno.paciente}:\n` +
     `Fecha: ${turno.fecha}\n` +
     `Horario: ${turno.hora_inicio}\n` +
     `Direccion: ${turno.direccion || '-'}\n\n` +

@@ -2,7 +2,15 @@ import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
-const FORM_VACIO = { tutor: '', telefono: '', direccion: '', email: '', fecha: '', hora_inicio: '' };
+const FORM_VACIO = {
+  paciente: '',
+  tutor: '',
+  telefono: '',
+  direccion: '',
+  email: '',
+  fecha: '',
+  hora_inicio: '',
+};
 
 const ETIQUETAS_ESTADO = {
   pendiente: 'Pendiente',
@@ -99,6 +107,7 @@ export default function Turnos() {
   const abrirEdicion = (turno) => {
     setEditando(turno);
     setForm({
+      paciente: turno.paciente,
       tutor: turno.tutor,
       telefono: turno.telefono,
       direccion: turno.direccion,
@@ -177,6 +186,10 @@ export default function Turnos() {
           <h2>{editando ? 'Editar turno' : 'Nuevo turno'}</h2>
           <form onSubmit={onSubmit}>
             <div className="field">
+              <label>Paciente</label>
+              <input name="paciente" value={form.paciente} onChange={onChange} required />
+            </div>
+            <div className="field" style={{ marginTop: '0.75rem' }}>
               <label>Tutor</label>
               <input name="tutor" value={form.tutor} onChange={onChange} required />
             </div>
@@ -260,7 +273,8 @@ export default function Turnos() {
                     {t.hora_inicio} - {t.hora_fin}
                   </div>
                   <div className="agenda-datos">
-                    <strong>{t.tutor}</strong>
+                    <strong>{t.paciente}</strong>
+                    <div className="muted">Tutor: {t.tutor}</div>
                     <div className="muted">{t.telefono}</div>
                     <div className="muted">{t.direccion}</div>
                     <div className="muted">{t.email}</div>

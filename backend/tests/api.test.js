@@ -72,6 +72,7 @@ test('jimena crea un turno con tutor y telefono', async () => {
     .post('/api/turnos')
     .set('Authorization', `Bearer ${jimenaToken}`)
     .send({
+      paciente: 'Mascota de Familia Perez',
       tutor: 'Familia Perez',
       telefono: '11-4444-5555',
       direccion: 'Av. Siempre Viva 123',
@@ -91,6 +92,7 @@ test('daniela si puede tomar el mismo horario (agenda por extraccionista)', asyn
     .post('/api/turnos')
     .set('Authorization', `Bearer ${danielaToken}`)
     .send({
+      paciente: 'Mascota de Familia Gomez',
       tutor: 'Familia Gomez',
       telefono: '11-5555-6666',
       direccion: 'Calle Falsa 456',
@@ -106,6 +108,7 @@ test('jimena no puede crear otro turno en el mismo horario ya ocupado', async ()
     .post('/api/turnos')
     .set('Authorization', `Bearer ${jimenaToken}`)
     .send({
+      paciente: 'Mascota de Otra familia',
       tutor: 'Otra familia',
       telefono: '11-0000-0000',
       direccion: 'Otra direccion 789',
@@ -121,6 +124,7 @@ test('acepta cualquier horario dentro del horario laboral, no solo cada 30 minut
     .post('/api/turnos')
     .set('Authorization', `Bearer ${jimenaToken}`)
     .send({
+      paciente: 'Mascota de Familia Ruiz',
       tutor: 'Familia Ruiz',
       telefono: '11-1111-2222',
       direccion: 'Calle Ruiz 111',
@@ -138,6 +142,7 @@ test('rechaza un horario fuera del horario laboral (antes de las 08:00 o desde l
     .post('/api/turnos')
     .set('Authorization', `Bearer ${jimenaToken}`)
     .send({
+      paciente: 'Mascota de Familia Temprano',
       tutor: 'Familia Temprano',
       telefono: '11-2222-3333',
       direccion: 'Calle Temprano 1',
@@ -151,6 +156,7 @@ test('rechaza un horario fuera del horario laboral (antes de las 08:00 o desde l
     .post('/api/turnos')
     .set('Authorization', `Bearer ${jimenaToken}`)
     .send({
+      paciente: 'Mascota de Familia Tarde',
       tutor: 'Familia Tarde',
       telefono: '11-3333-4444',
       direccion: 'Calle Tarde 1',
@@ -166,6 +172,7 @@ test('rechaza un horario con formato invalido', async () => {
     .post('/api/turnos')
     .set('Authorization', `Bearer ${jimenaToken}`)
     .send({
+      paciente: 'Mascota de Familia Formato',
       tutor: 'Familia Formato',
       telefono: '11-4444-5555',
       direccion: 'Calle Formato 1',
@@ -245,6 +252,7 @@ test('diagnotest rechaza un turno pendiente con motivo', async () => {
     .post('/api/turnos')
     .set('Authorization', `Bearer ${jimenaToken}`)
     .send({
+      paciente: 'Mascota de Familia a rechazar',
       tutor: 'Familia a rechazar',
       telefono: '11-9999-8888',
       direccion: 'Calle a rechazar 222',
@@ -268,6 +276,7 @@ test('el horario de un turno rechazado vuelve a estar disponible', async () => {
     .post('/api/turnos')
     .set('Authorization', `Bearer ${jimenaToken}`)
     .send({
+      paciente: 'Mascota de Familia Reutiliza Horario',
       tutor: 'Familia Reutiliza Horario',
       telefono: '11-7777-8888',
       direccion: 'Calle Reutiliza 1',
@@ -374,6 +383,7 @@ test('el cron de recordatorios envia turnos confirmados de hoy y manana, y los m
     .post('/api/turnos')
     .set('Authorization', `Bearer ${jimenaToken}`)
     .send({
+      paciente: 'Mascota de Familia Recordatorio',
       tutor: 'Familia Recordatorio',
       telefono: '11-2222-3333',
       direccion: 'Calle Recordatorio 1',
@@ -411,6 +421,7 @@ test('un turno confirmado para hoy tambien recibe el recordatorio (se confirmo t
     .post('/api/turnos')
     .set('Authorization', `Bearer ${danielaToken}`)
     .send({
+      paciente: 'Mascota de Familia Recordatorio Hoy',
       tutor: 'Familia Recordatorio Hoy',
       telefono: '11-2222-4444',
       direccion: 'Calle Recordatorio 2',
