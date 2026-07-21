@@ -37,7 +37,8 @@ frontend/   Panel (React + Vite)
   pendientes de confirmación" en la barra lateral despliega la lista
   (filtrable por día) para **confirmar** (requiere cargar un número de
   protocolo, y dispara un correo de confirmación al tutor) o **rechazar**
-  (con motivo opcional).
+  (con motivo opcional). Un buscador (por paciente, tutor o email) permite
+  encontrar el estado de un turno sin importar la fecha.
 - **Recordatorio automático**: un día antes del turno, si quedó confirmado,
   se envía un mail de recordatorio al tutor (vía un Vercel Cron Job que
   corre una vez por día).

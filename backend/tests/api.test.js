@@ -308,6 +308,37 @@ test('diagnotest si ve los turnos rechazados', async () => {
   assert.ok(res.body.some((t) => t.tutor === 'Familia a rechazar'));
 });
 
+test('diagnotest puede buscar turnos por paciente, tutor o email', async () => {
+  const porPaciente = await request(app)
+    .get('/api/turnos?q=Mascota de Familia Perez')
+    .set('Authorization', `Bearer ${diagnotestToken}`);
+  assert.equal(porPaciente.status, 200);
+  assert.ok(porPaciente.body.some((t) => t.tutor === 'Familia Perez'));
+
+  const porTutor = await request(app)
+    .get('/api/turnos?q=Perez')
+    .set('Authorization', `Bearer ${diagnotestToken}`);
+  assert.ok(porTutor.body.some((t) => t.tutor === 'Familia Perez'));
+
+  const porEmail = await request(app)
+    .get('/api/turnos?q=perez@test.com')
+    .set('Authorization', `Bearer ${diagnotestToken}`);
+  assert.ok(porEmail.body.some((t) => t.tutor === 'Familia Perez'));
+
+  const sinResultados = await request(app)
+    .get('/api/turnos?q=no-existe-nadie')
+    .set('Authorization', `Bearer ${diagnotestToken}`);
+  assert.equal(sinResultados.body.length, 0);
+});
+
+test('la extraccionista al buscar solo ve sus propios turnos', async () => {
+  const res = await request(app)
+    .get('/api/turnos?q=Perez')
+    .set('Authorization', `Bearer ${danielaToken}`);
+  assert.equal(res.status, 200);
+  assert.equal(res.body.length, 0);
+});
+
 test('turno inexistente devuelve 404', async () => {
   const res = await request(app)
     .get('/api/turnos/999999')

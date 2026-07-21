@@ -59,7 +59,7 @@ router.get(
 router.get(
   '/',
   ah(async (req, res) => {
-    const { estado, desde, hasta } = req.query;
+    const { estado, desde, hasta, q } = req.query;
     const condiciones = [];
     const params = [];
 
@@ -80,6 +80,11 @@ router.get(
     if (hasta) {
       params.push(hasta);
       condiciones.push(`t.fecha <= $${params.length}`);
+    }
+    if (q) {
+      params.push(`%${q}%`);
+      const idx = params.length;
+      condiciones.push(`(t.paciente ILIKE $${idx} OR t.tutor ILIKE $${idx} OR t.email ILIKE $${idx})`);
     }
 
     const where = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '';
