@@ -38,7 +38,10 @@ frontend/   Panel (React + Vite)
   (filtrable por día) para **confirmar** (requiere cargar un número de
   protocolo, y dispara un correo de confirmación al tutor) o **rechazar**
   (con motivo opcional). Un buscador (por paciente, tutor o email) permite
-  encontrar el estado de un turno sin importar la fecha.
+  encontrar el estado de un turno sin importar la fecha. Mientras tiene la
+  pestaña abierta, cada ~20 segundos se revisa si hay turnos pendientes
+  nuevos y se avisa con una notificación del navegador (si dio el permiso)
+  y un aviso dentro de la página.
 - **Recordatorio automático**: un día antes del turno, si quedó confirmado,
   se envía un mail de recordatorio al tutor (vía un Vercel Cron Job que
   corre una vez por día).

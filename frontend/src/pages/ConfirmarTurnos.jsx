@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
+const INTERVALO_REVISION_MS = 20000;
+
 const ETIQUETAS_ESTADO = {
   pendiente: 'Pendiente',
   confirmado: 'Confirmado',
@@ -37,6 +39,8 @@ export default function ConfirmarTurnos() {
   const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
   const [buscando, setBuscando] = useState(false);
   const debounceBusqueda = useRef(null);
+  const [avisos, setAvisos] = useState([]);
+  const idsConocidosRef = useRef(null);
 
   const cargarExtraccionistas = async () => {
     try {
@@ -77,9 +81,50 @@ export default function ConfirmarTurnos() {
     await Promise.all([cargarTurnosDia(f), cargarPendientes()]);
   };
 
+  const mostrarAviso = (turno) => {
+    const texto = `${turno.paciente} — ${turno.creado_por_nombre} — ${formatearFecha(turno.fecha)} ${turno.hora_inicio}`;
+
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      new Notification('Nuevo turno pendiente de confirmar', { body: texto });
+    }
+
+    const avisoId = `${turno.id}-${Date.now()}`;
+    setAvisos((prev) => [...prev, { avisoId, texto }]);
+    setTimeout(() => {
+      setAvisos((prev) => prev.filter((a) => a.avisoId !== avisoId));
+    }, 8000);
+  };
+
+  // Sondea los turnos pendientes cada tantos segundos (mientras la pestana
+  // esta abierta) para avisarle a Diagnotest apenas una extraccionista
+  // carga un turno nuevo. La primera vez solo establece la base, sin avisar.
+  const revisarNuevosPendientes = async () => {
+    try {
+      const data = await api.listarTurnos(token, { estado: 'pendiente' });
+      if (idsConocidosRef.current) {
+        for (const turno of data) {
+          if (!idsConocidosRef.current.has(turno.id)) {
+            mostrarAviso(turno);
+          }
+        }
+      }
+      idsConocidosRef.current = new Set(data.map((t) => t.id));
+    } catch {
+      // Fallo silencioso: es un chequeo de fondo, no debe interrumpir al usuario.
+    }
+  };
+
   useEffect(() => {
     cargarExtraccionistas();
     cargarTodo(fecha);
+
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    revisarNuevosPendientes();
+    const intervalo = setInterval(revisarNuevosPendientes, INTERVALO_REVISION_MS);
+    return () => clearInterval(intervalo);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -168,6 +213,17 @@ export default function ConfirmarTurnos() {
 
   return (
     <div className="confirmar-layout">
+      {avisos.length > 0 && (
+        <div className="toast-container">
+          {avisos.map((a) => (
+            <div key={a.avisoId} className="toast">
+              <strong>Nuevo turno pendiente</strong>
+              <div>{a.texto}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <aside className="confirmar-sidebar">
         <button
           className="btn btn-primary btn-ancho"
