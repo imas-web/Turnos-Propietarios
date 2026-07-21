@@ -94,7 +94,7 @@ export default function ConfirmarTurnos() {
     setMensaje('');
     const numero_dt = (dtPorTurno[id] || '').trim();
     if (!numero_dt) {
-      setError('Ingresa el numero de DT para poder confirmar el turno.');
+      setError('Ingresa el numero de protocolo para poder confirmar el turno.');
       return;
     }
     try {
@@ -174,7 +174,7 @@ export default function ConfirmarTurnos() {
                   <div className="muted">{t.direccion}</div>
                   <div className="muted">{t.email}</div>
                   <input
-                    placeholder="Numero de DT (requerido para confirmar)"
+                    placeholder="Numero de protocolo (requerido para confirmar)"
                     value={dtPorTurno[t.id] || ''}
                     onChange={(e) => setDtPorTurno({ ...dtPorTurno, [t.id]: e.target.value })}
                     style={{ marginTop: '0.5rem' }}

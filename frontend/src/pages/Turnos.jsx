@@ -279,7 +279,7 @@ export default function Turnos() {
                     <div className="muted">{t.direccion}</div>
                     <div className="muted">{t.email}</div>
                     {t.estado === 'confirmado' && t.numero_dt && (
-                      <div className="muted">Nº DT: {t.numero_dt}</div>
+                      <div className="muted">Nº de protocolo: {t.numero_dt}</div>
                     )}
                   </div>
                   <span className={`badge badge-${t.estado}`}>{ETIQUETAS_ESTADO[t.estado]}</span>

@@ -35,9 +35,9 @@ frontend/   Panel (React + Vite)
   realmente usado ese día, una columna por extraccionista) con los turnos
   sin confirmar en rojo y los confirmados en verde. Un botón "Turnos
   pendientes de confirmación" en la barra lateral despliega la lista
-  (filtrable por día) para **confirmar** (requiere cargar un número de DT,
-  y dispara un correo de confirmación al tutor) o **rechazar** (con motivo
-  opcional).
+  (filtrable por día) para **confirmar** (requiere cargar un número de
+  protocolo, y dispara un correo de confirmación al tutor) o **rechazar**
+  (con motivo opcional).
 - **Recordatorio automático**: un día antes del turno, si quedó confirmado,
   se envía un mail de recordatorio al tutor (vía un Vercel Cron Job que
   corre una vez por día).

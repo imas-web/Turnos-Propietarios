@@ -248,7 +248,7 @@ router.post(
   ah(async (req, res) => {
     const { numero_dt } = req.body || {};
     if (!numero_dt) {
-      return res.status(400).json({ error: 'numero_dt es requerido para confirmar' });
+      return res.status(400).json({ error: 'El numero de protocolo es requerido para confirmar' });
     }
 
     const { rows: existingRows } = await pool.query('SELECT * FROM turnos WHERE id = $1', [
