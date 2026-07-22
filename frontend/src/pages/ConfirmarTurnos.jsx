@@ -264,7 +264,7 @@ export default function ConfirmarTurnos() {
                   <div className="muted">{t.direccion}</div>
                   <div className="muted">{t.email}</div>
                   <input
-                    placeholder="Numero de protocolo (requerido para confirmar)"
+                    placeholder="Nº de protocolo (para confirmar)"
                     value={dtPorTurno[t.id] || ''}
                     onChange={(e) => setDtPorTurno({ ...dtPorTurno, [t.id]: e.target.value })}
                     style={{ marginTop: '0.5rem' }}
