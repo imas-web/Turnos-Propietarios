@@ -29,7 +29,8 @@ frontend/   Panel (React + Vite)
   turnos de otra extraccionista ni los que fueron rechazados, y puede
   editar o cancelar los suyos. Al registrar el turno, se le envía un mail
   al tutor pidiéndole los datos de la mascota por WhatsApp y los datos
-  bancarios para el pago.
+  bancarios para el pago. Un buscador (por paciente, tutor o email) permite
+  encontrar cualquiera de sus turnos, incluso los ya vencidos.
 - **Diagnotest**: ve una grilla del día (una fila por cada horario
   realmente usado ese día, una columna por extraccionista) con los turnos
   sin confirmar en rojo y los confirmados en verde. Un botón "Turnos

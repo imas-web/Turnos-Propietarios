@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -54,6 +54,10 @@ export default function Turnos() {
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(true);
+  const [busqueda, setBusqueda] = useState('');
+  const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
+  const [buscando, setBuscando] = useState(false);
+  const debounceBusqueda = useRef(null);
 
   const cargarTurnos = async (estado = filtroEstado, fecha = filtroFecha) => {
     setCargando(true);
@@ -92,6 +96,29 @@ export default function Turnos() {
   const limpiarFiltroFecha = async () => {
     setFiltroFecha('');
     await cargarTurnos(filtroEstado, '');
+  };
+
+  const buscar = async (texto) => {
+    if (!texto.trim()) {
+      setResultadosBusqueda([]);
+      return;
+    }
+    setBuscando(true);
+    try {
+      const data = await api.listarTurnos(token, { q: texto.trim() });
+      setResultadosBusqueda(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBuscando(false);
+    }
+  };
+
+  const onBusquedaChange = (e) => {
+    const texto = e.target.value;
+    setBusqueda(texto);
+    if (debounceBusqueda.current) clearTimeout(debounceBusqueda.current);
+    debounceBusqueda.current = setTimeout(() => buscar(texto), 300);
   };
 
   const onChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
@@ -239,6 +266,44 @@ export default function Turnos() {
           </form>
         </div>
       )}
+
+      <div className="card">
+        <h2 style={{ marginTop: 0 }}>Buscar turno</h2>
+        <input
+          type="search"
+          placeholder="Buscar por paciente, tutor o email..."
+          value={busqueda}
+          onChange={onBusquedaChange}
+          style={{ width: '100%' }}
+        />
+
+        {busqueda.trim() &&
+          (buscando ? (
+            <p className="muted" style={{ marginTop: '0.75rem' }}>
+              Buscando...
+            </p>
+          ) : resultadosBusqueda.length === 0 ? (
+            <p className="muted" style={{ marginTop: '0.75rem' }}>
+              No se encontraron turnos.
+            </p>
+          ) : (
+            <div style={{ marginTop: '0.75rem' }}>
+              {resultadosBusqueda.map((t) => (
+                <div key={t.id} className="agenda-item">
+                  <div className="agenda-hora">
+                    {formatearFecha(t.fecha)} · {t.hora_inicio}
+                  </div>
+                  <div className="agenda-datos">
+                    <strong>{t.paciente}</strong>
+                    <div className="muted">Tutor: {t.tutor}</div>
+                    <div className="muted">{t.email}</div>
+                  </div>
+                  <span className={`badge badge-${t.estado}`}>{ETIQUETAS_ESTADO[t.estado]}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+      </div>
 
       <div className="card">
         <div className="agenda-header">
