@@ -3,6 +3,7 @@ import { pool } from '../db.js';
 import { requireAuth, requireRol } from '../middleware/auth.js';
 import { ah } from '../utils/asyncHandler.js';
 import { enviarCorreoConfirmacion, enviarCorreoDatosTurno } from '../utils/mailer.js';
+import { fechaYHoraActualEnArgentina } from '../utils/fechaArgentina.js';
 
 const router = Router();
 
@@ -75,6 +76,12 @@ router.get(
     }
     if (desde) {
       params.push(desde);
+      condiciones.push(`t.fecha >= $${params.length}`);
+    } else if (!q) {
+      // Sin un "desde" explicito ni busqueda, se ocultan los turnos de dias
+      // que ya pasaron (siguen en la base hasta la limpieza automatica a
+      // los 30 dias). Si se pide una fecha puntual, se respeta igual.
+      params.push(fechaYHoraActualEnArgentina().fecha);
       condiciones.push(`t.fecha >= $${params.length}`);
     }
     if (hasta) {

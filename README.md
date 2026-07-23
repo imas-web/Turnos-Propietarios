@@ -24,8 +24,7 @@ frontend/   Panel (React + Vite)
 - **Extraccionista** (Jimena/Daniela): agenda (lista por día, filtrable por
   fecha y estado) de sus propios turnos ya otorgados, y un botón "Agregar
   turno nuevo" con Paciente, Tutor, Teléfono, Dirección, Email, Día y
-  Horario. El
-  horario se elige con un selector de hora libre (como poner una alarma),
+  Horario. El horario se elige con un selector de hora libre (como poner una alarma),
   sin pasos fijos, dentro del horario laboral (08:00 a 20:00). No ve los
   turnos de otra extraccionista ni los que fueron rechazados, y puede
   editar o cancelar los suyos. Al registrar el turno, se le envía un mail
@@ -45,6 +44,10 @@ frontend/   Panel (React + Vite)
 - **Recordatorio automático**: un día antes del turno, si quedó confirmado,
   se envía un mail de recordatorio al tutor (vía un Vercel Cron Job que
   corre una vez por día).
+- **Turnos vencidos**: apenas pasa el día del turno, deja de listarse por
+  defecto (aunque se puede seguir consultando pidiendo esa fecha puntual
+  con el filtro), y se elimina definitivamente a los 30 días (otro Vercel
+  Cron Job diario).
 - **Admin**: gestiona (crea, edita, elimina) las cuentas de tipo
   extraccionista y diagnotest desde el panel.
 - Estados de turno: `pendiente`, `confirmado`, `rechazado`, `cancelado`.

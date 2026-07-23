@@ -339,6 +339,84 @@ test('la extraccionista al buscar solo ve sus propios turnos', async () => {
   assert.equal(res.body.length, 0);
 });
 
+test('un turno de un dia que ya paso se oculta del listado por defecto, pero aparece si se pide esa fecha', async () => {
+  const hoy = fechaYHoraActualEnArgentina().fecha;
+  const fechaPasada = sumarDias(hoy, -5);
+
+  const creado = await request(app)
+    .post('/api/turnos')
+    .set('Authorization', `Bearer ${jimenaToken}`)
+    .send({
+      paciente: 'Paciente Viejo',
+      tutor: 'Familia Vieja',
+      telefono: '11-1111-0000',
+      direccion: 'Calle Vieja 1',
+      email: 'vieja@test.com',
+      fecha: fechaPasada,
+      hora_inicio: '09:15',
+    });
+  assert.equal(creado.status, 201);
+
+  const sinFiltro = await request(app)
+    .get('/api/turnos')
+    .set('Authorization', `Bearer ${jimenaToken}`);
+  assert.ok(!sinFiltro.body.some((t) => t.id === creado.body.id));
+
+  const conFiltro = await request(app)
+    .get(`/api/turnos?desde=${fechaPasada}&hasta=${fechaPasada}`)
+    .set('Authorization', `Bearer ${jimenaToken}`);
+  assert.ok(conFiltro.body.some((t) => t.id === creado.body.id));
+
+  const conBusqueda = await request(app)
+    .get('/api/turnos?q=Paciente Viejo')
+    .set('Authorization', `Bearer ${jimenaToken}`);
+  assert.ok(conBusqueda.body.some((t) => t.id === creado.body.id));
+});
+
+test('el cron de limpieza elimina turnos de mas de 30 dias mas no los mas recientes', async () => {
+  const hoy = fechaYHoraActualEnArgentina().fecha;
+
+  const antiguo = await request(app)
+    .post('/api/turnos')
+    .set('Authorization', `Bearer ${jimenaToken}`)
+    .send({
+      paciente: 'Paciente Antiguo',
+      tutor: 'Familia Antigua',
+      telefono: '11-2222-0000',
+      direccion: 'Calle Antigua 1',
+      email: 'antigua@test.com',
+      fecha: sumarDias(hoy, -35),
+      hora_inicio: '09:30',
+    });
+  assert.equal(antiguo.status, 201);
+
+  const reciente = await request(app)
+    .post('/api/turnos')
+    .set('Authorization', `Bearer ${jimenaToken}`)
+    .send({
+      paciente: 'Paciente Reciente',
+      tutor: 'Familia Reciente',
+      telefono: '11-3333-0000',
+      direccion: 'Calle Reciente 1',
+      email: 'reciente@test.com',
+      fecha: sumarDias(hoy, -10),
+      hora_inicio: '09:45',
+    });
+  assert.equal(reciente.status, 201);
+
+  const res = await request(app).get('/api/cron/limpieza');
+  assert.equal(res.status, 200);
+  assert.ok(res.body.eliminados >= 1);
+
+  const antiguoEnBase = await pool.query('SELECT id FROM turnos WHERE id = $1', [antiguo.body.id]);
+  assert.equal(antiguoEnBase.rows.length, 0);
+
+  const recienteEnBase = await pool.query('SELECT id FROM turnos WHERE id = $1', [
+    reciente.body.id,
+  ]);
+  assert.equal(recienteEnBase.rows.length, 1);
+});
+
 test('turno inexistente devuelve 404', async () => {
   const res = await request(app)
     .get('/api/turnos/999999')

@@ -55,4 +55,27 @@ router.get(
   })
 );
 
+const DIAS_RETENCION = 30;
+
+// Elimina definitivamente los turnos de dias que ya pasaron hace mas de
+// DIAS_RETENCION. Mientras tanto, esos turnos ya quedan ocultos del uso
+// normal de la app (ver GET /api/turnos), pero siguen en la base por si
+// hace falta consultarlos pidiendo esa fecha puntual.
+// Pensado para ser invocado una vez por dia por un Vercel Cron Job.
+router.get(
+  '/limpieza',
+  ah(async (req, res) => {
+    if (!autorizado(req)) return res.status(401).json({ error: 'No autorizado' });
+
+    const { fecha: hoy } = fechaYHoraActualEnArgentina();
+    const limite = sumarDias(hoy, -DIAS_RETENCION);
+
+    const { rows } = await pool.query('DELETE FROM turnos WHERE fecha < $1 RETURNING id', [
+      limite,
+    ]);
+
+    res.json({ limite, eliminados: rows.length });
+  })
+);
+
 export default router;
