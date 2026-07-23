@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import CalendarioMes from '../components/CalendarioMes.jsx';
 
 const FORM_VACIO = {
   paciente: '',
@@ -28,6 +29,15 @@ function formatearFecha(fechaStr) {
     month: 'long',
   });
   return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+function rangoDelMes(anio, mes) {
+  const ultimoDia = new Date(anio, mes + 1, 0).getDate();
+  const m = String(mes + 1).padStart(2, '0');
+  return {
+    desde: `${anio}-${m}-01`,
+    hasta: `${anio}-${m}-${String(ultimoDia).padStart(2, '0')}`,
+  };
 }
 
 function agruparPorFecha(turnos) {
@@ -58,6 +68,18 @@ export default function Turnos() {
   const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
   const [buscando, setBuscando] = useState(false);
   const debounceBusqueda = useRef(null);
+  const [calAnio, setCalAnio] = useState(() => new Date().getFullYear());
+  const [calMes, setCalMes] = useState(() => new Date().getMonth());
+  const [turnosMes, setTurnosMes] = useState([]);
+
+  const cargarTurnosMes = async (anio = calAnio, mes = calMes) => {
+    try {
+      const data = await api.listarTurnos(token, rangoDelMes(anio, mes));
+      setTurnosMes(data);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
   const cargarTurnos = async (estado = filtroEstado, fecha = filtroFecha) => {
     setCargando(true);
@@ -78,6 +100,7 @@ export default function Turnos() {
 
   useEffect(() => {
     cargarTurnos('', '');
+    cargarTurnosMes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -96,6 +119,17 @@ export default function Turnos() {
   const limpiarFiltroFecha = async () => {
     setFiltroFecha('');
     await cargarTurnos(filtroEstado, '');
+  };
+
+  const onCambiarMesCalendario = async (anio, mes) => {
+    setCalAnio(anio);
+    setCalMes(mes);
+    await cargarTurnosMes(anio, mes);
+  };
+
+  const onSeleccionarDiaCalendario = async (fechaStr) => {
+    setFiltroFecha(fechaStr);
+    await cargarTurnos(filtroEstado, fechaStr);
   };
 
   const buscar = async (texto) => {
@@ -166,7 +200,7 @@ export default function Turnos() {
         setMensaje('Turno creado. Queda pendiente de confirmacion.');
       }
       cerrarFormulario();
-      await cargarTurnos();
+      await Promise.all([cargarTurnos(), cargarTurnosMes()]);
     } catch (err) {
       setError(err.message);
     }
@@ -177,7 +211,7 @@ export default function Turnos() {
     setError('');
     try {
       await api.cancelarTurno(token, id);
-      await cargarTurnos();
+      await Promise.all([cargarTurnos(), cargarTurnosMes()]);
     } catch (err) {
       setError(err.message);
     }
@@ -188,7 +222,7 @@ export default function Turnos() {
     setError('');
     try {
       await api.eliminarTurno(token, id);
-      await cargarTurnos();
+      await Promise.all([cargarTurnos(), cargarTurnosMes()]);
     } catch (err) {
       setError(err.message);
     }
@@ -266,6 +300,17 @@ export default function Turnos() {
           </form>
         </div>
       )}
+
+      <div className="card">
+        <CalendarioMes
+          anio={calAnio}
+          mes={calMes}
+          turnos={turnosMes}
+          fechaSeleccionada={filtroFecha}
+          onSeleccionarDia={onSeleccionarDiaCalendario}
+          onCambiarMes={onCambiarMesCalendario}
+        />
+      </div>
 
       <div className="card">
         <h2 style={{ marginTop: 0 }}>Buscar turno</h2>

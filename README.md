@@ -31,6 +31,10 @@ frontend/   Panel (React + Vite)
   al tutor pidiéndole los datos de la mascota por WhatsApp y los datos
   bancarios para el pago. Un buscador (por paciente, tutor o email) permite
   encontrar cualquiera de sus turnos, incluso los ya vencidos.
+- **Calendario mensual** (ambos roles): un vistazo rápido del mes vigente
+  (navegable a otros meses) con la cantidad de turnos pendientes/confirmados
+  de cada día; al hacer clic en un día se filtra la vista principal por
+  esa fecha.
 - **Diagnotest**: ve una grilla del día (una fila por cada horario
   realmente usado ese día, una columna por extraccionista) con los turnos
   sin confirmar en rojo y los confirmados en verde. Un botón "Turnos

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import CalendarioMes from '../components/CalendarioMes.jsx';
 
 const INTERVALO_REVISION_MS = 20000;
 
@@ -10,6 +11,15 @@ const ETIQUETAS_ESTADO = {
   rechazado: 'Rechazado',
   cancelado: 'Cancelado',
 };
+
+function rangoDelMes(anio, mes) {
+  const ultimoDia = new Date(anio, mes + 1, 0).getDate();
+  const m = String(mes + 1).padStart(2, '0');
+  return {
+    desde: `${anio}-${m}-01`,
+    hasta: `${anio}-${m}-${String(ultimoDia).padStart(2, '0')}`,
+  };
+}
 
 function formatearFecha(fechaStr) {
   const [anio, mes, dia] = fechaStr.split('-').map(Number);
@@ -41,6 +51,18 @@ export default function ConfirmarTurnos() {
   const debounceBusqueda = useRef(null);
   const [avisos, setAvisos] = useState([]);
   const idsConocidosRef = useRef(null);
+  const [calAnio, setCalAnio] = useState(() => new Date().getFullYear());
+  const [calMes, setCalMes] = useState(() => new Date().getMonth());
+  const [turnosMes, setTurnosMes] = useState([]);
+
+  const cargarTurnosMes = async (anio = calAnio, mes = calMes) => {
+    try {
+      const data = await api.listarTurnos(token, rangoDelMes(anio, mes));
+      setTurnosMes(data);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
   const cargarExtraccionistas = async () => {
     try {
@@ -78,7 +100,7 @@ export default function ConfirmarTurnos() {
   };
 
   const cargarTodo = async (f = fecha) => {
-    await Promise.all([cargarTurnosDia(f), cargarPendientes()]);
+    await Promise.all([cargarTurnosDia(f), cargarPendientes(), cargarTurnosMes()]);
   };
 
   const mostrarAviso = (turno) => {
@@ -132,6 +154,17 @@ export default function ConfirmarTurnos() {
     const f = e.target.value;
     setFecha(f);
     await cargarTurnosDia(f);
+  };
+
+  const onCambiarMesCalendario = async (anio, mes) => {
+    setCalAnio(anio);
+    setCalMes(mes);
+    await cargarTurnosMes(anio, mes);
+  };
+
+  const onSeleccionarDiaCalendario = async (fechaStr) => {
+    setFecha(fechaStr);
+    await cargarTurnosDia(fechaStr);
   };
 
   const onFiltroFechaPendientesChange = async (e) => {
@@ -293,6 +326,17 @@ export default function ConfirmarTurnos() {
       </aside>
 
       <main className="container confirmar-main">
+        <div className="card">
+          <CalendarioMes
+            anio={calAnio}
+            mes={calMes}
+            turnos={turnosMes}
+            fechaSeleccionada={fecha}
+            onSeleccionarDia={onSeleccionarDiaCalendario}
+            onCambiarMes={onCambiarMesCalendario}
+          />
+        </div>
+
         <div className="card">
           <h2 style={{ marginTop: 0 }}>Buscar turno</h2>
           <input
