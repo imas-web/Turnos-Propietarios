@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import CalendarioMes from '../components/CalendarioMes.jsx';
+import { actualizarBadgePendientes } from '../utils/favicon.js';
 
 const INTERVALO_REVISION_MS = 20000;
 
@@ -50,6 +51,7 @@ export default function ConfirmarTurnos() {
   const [buscando, setBuscando] = useState(false);
   const debounceBusqueda = useRef(null);
   const [avisos, setAvisos] = useState([]);
+  const [totalPendientes, setTotalPendientes] = useState(0);
   const idsConocidosRef = useRef(null);
   const [calAnio, setCalAnio] = useState(() => new Date().getFullYear());
   const [calMes, setCalMes] = useState(() => new Date().getMonth());
@@ -131,10 +133,22 @@ export default function ConfirmarTurnos() {
         }
       }
       idsConocidosRef.current = new Set(data.map((t) => t.id));
+      setTotalPendientes(data.length);
     } catch {
       // Fallo silencioso: es un chequeo de fondo, no debe interrumpir al usuario.
     }
   };
+
+  // Refleja la cantidad de pendientes en la pestana del navegador (icono +
+  // titulo), igual que el globito de WhatsApp Web, para verla sin necesidad
+  // de tener la pestana al frente.
+  useEffect(() => {
+    actualizarBadgePendientes(totalPendientes);
+  }, [totalPendientes]);
+
+  useEffect(() => {
+    return () => actualizarBadgePendientes(0);
+  }, []);
 
   useEffect(() => {
     cargarExtraccionistas();

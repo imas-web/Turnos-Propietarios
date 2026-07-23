@@ -45,7 +45,9 @@ frontend/   Panel (React + Vite)
   encontrar el estado de un turno sin importar la fecha. Mientras tiene la
   pestaña abierta, cada ~20 segundos se revisa si hay turnos pendientes
   nuevos y se avisa con una notificación del navegador (si dio el permiso)
-  y un aviso dentro de la página.
+  y un aviso dentro de la página. La cantidad de pendientes también se ve
+  en la pestaña del navegador (globito rojo sobre el ícono y en el título),
+  como en WhatsApp Web.
 - **Recordatorio automático**: un día antes del turno, si quedó confirmado,
   se envía un mail de recordatorio al tutor (vía un Vercel Cron Job que
   corre una vez por día).
