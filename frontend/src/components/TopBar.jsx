@@ -21,14 +21,24 @@ export default function TopBar() {
           </NavLink>
         )}
         {rol === 'diagnotest' && (
-          <NavLink to="/confirmar" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Confirmar turnos
-          </NavLink>
+          <>
+            <NavLink to="/confirmar" className={({ isActive }) => (isActive ? 'active' : '')}>
+              Confirmar turnos
+            </NavLink>
+            <NavLink to="/derivar" className={({ isActive }) => (isActive ? 'active' : '')}>
+              Derivar por zona
+            </NavLink>
+          </>
         )}
         {rol === 'admin' && (
-          <NavLink to="/usuarios" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Usuarios
-          </NavLink>
+          <>
+            <NavLink to="/usuarios" className={({ isActive }) => (isActive ? 'active' : '')}>
+              Usuarios
+            </NavLink>
+            <NavLink to="/zonas" className={({ isActive }) => (isActive ? 'active' : '')}>
+              Zonas
+            </NavLink>
+          </>
         )}
         <span className="muted" style={{ padding: '0.4rem 0.4rem' }}>
           {nombre}

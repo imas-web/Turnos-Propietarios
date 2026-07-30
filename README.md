@@ -56,7 +56,14 @@ frontend/   Panel (React + Vite)
   con el filtro), y se elimina definitivamente a los 30 días (otro Vercel
   Cron Job diario).
 - **Admin**: gestiona (crea, edita, elimina) las cuentas de tipo
-  extraccionista y diagnotest desde el panel.
+  extraccionista y diagnotest desde el panel, y en la solapa "Zonas" define
+  qué barrio/localidad/CP cubre cada extraccionista (una zona puede tener
+  más de una).
+- **Derivar por zona** (Diagnotest): solapa separada donde escribe el
+  barrio/localidad/CP del paciente y la app le dice qué extraccionista(s)
+  la cubren, para saber a quién derivar. No usa Google Maps ni geocodifica
+  direcciones exactas: es una búsqueda simple sobre las zonas que carga
+  Admin, sin costo ni configuración extra.
 - Estados de turno: `pendiente`, `confirmado`, `rechazado`, `cancelado`.
 
 ## Requisitos

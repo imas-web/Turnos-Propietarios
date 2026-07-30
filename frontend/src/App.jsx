@@ -5,6 +5,8 @@ import Login from './pages/Login.jsx';
 import Turnos from './pages/Turnos.jsx';
 import ConfirmarTurnos from './pages/ConfirmarTurnos.jsx';
 import Usuarios from './pages/Usuarios.jsx';
+import Zonas from './pages/Zonas.jsx';
+import DerivarZona from './pages/DerivarZona.jsx';
 
 function RutaPrivada({ children }) {
   const { isAuthenticated } = useAuth();
@@ -58,10 +60,26 @@ export default function App() {
                   }
                 />
                 <Route
+                  path="/derivar"
+                  element={
+                    <RutaPorRol rol="diagnotest">
+                      <DerivarZona />
+                    </RutaPorRol>
+                  }
+                />
+                <Route
                   path="/usuarios"
                   element={
                     <RutaPorRol rol="admin">
                       <Usuarios />
+                    </RutaPorRol>
+                  }
+                />
+                <Route
+                  path="/zonas"
+                  element={
+                    <RutaPorRol rol="admin">
+                      <Zonas />
                     </RutaPorRol>
                   }
                 />

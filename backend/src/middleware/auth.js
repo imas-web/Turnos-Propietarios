@@ -17,9 +17,9 @@ export function requireAuth(req, res, next) {
   }
 }
 
-export function requireRol(rol) {
+export function requireRol(...roles) {
   return (req, res, next) => {
-    if (req.usuario?.rol !== rol) {
+    if (!roles.includes(req.usuario?.rol)) {
       return res.status(403).json({ error: 'No tenes permiso para esta accion' });
     }
     next();

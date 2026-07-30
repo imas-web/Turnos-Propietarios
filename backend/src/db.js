@@ -61,6 +61,15 @@ const SCHEMA_SQL = `
     creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     recordatorio_enviado BOOLEAN NOT NULL DEFAULT false
   );
+
+  CREATE TABLE IF NOT EXISTS zonas (
+    id SERIAL PRIMARY KEY,
+    nombre TEXT NOT NULL,
+    extraccionista_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    UNIQUE (nombre, extraccionista_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_zonas_nombre ON zonas(nombre);
 `;
 
 // Migraciones aditivas/idempotentes para instalaciones ya existentes, que

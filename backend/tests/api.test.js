@@ -569,3 +569,66 @@ test('el cron de recordatorios exige el secreto cuando CRON_SECRET esta configur
     delete process.env.CRON_SECRET;
   }
 });
+
+test('admin asigna una zona a una o mas extraccionistas', async () => {
+  const listado = await request(app)
+    .get('/api/usuarios')
+    .set('Authorization', `Bearer ${adminToken}`);
+  const jimena = listado.body.find((u) => u.usuario === 'jimena');
+  const daniela = listado.body.find((u) => u.usuario === 'daniela');
+
+  const res = await request(app)
+    .post('/api/zonas/asignar')
+    .set('Authorization', `Bearer ${adminToken}`)
+    .send({ nombre: 'Palermo', extraccionista_ids: [jimena.id, daniela.id] });
+  assert.equal(res.status, 200);
+
+  const zonas = await request(app)
+    .get('/api/zonas')
+    .set('Authorization', `Bearer ${adminToken}`);
+  assert.equal(zonas.status, 200);
+  const filasPalermo = zonas.body.filter((z) => z.nombre === 'Palermo');
+  assert.equal(filasPalermo.length, 2);
+  assert.ok(filasPalermo.some((z) => z.extraccionista_nombre === 'Jimena'));
+  assert.ok(filasPalermo.some((z) => z.extraccionista_nombre === 'Daniela'));
+});
+
+test('reasignar una zona reemplaza por completo la lista anterior', async () => {
+  const listado = await request(app)
+    .get('/api/usuarios')
+    .set('Authorization', `Bearer ${adminToken}`);
+  const jimena = listado.body.find((u) => u.usuario === 'jimena');
+
+  await request(app)
+    .post('/api/zonas/asignar')
+    .set('Authorization', `Bearer ${adminToken}`)
+    .send({ nombre: 'Palermo', extraccionista_ids: [jimena.id] });
+
+  const zonas = await request(app)
+    .get('/api/zonas')
+    .set('Authorization', `Bearer ${adminToken}`);
+  const filasPalermo = zonas.body.filter((z) => z.nombre === 'Palermo');
+  assert.equal(filasPalermo.length, 1);
+  assert.equal(filasPalermo[0].extraccionista_nombre, 'Jimena');
+});
+
+test('diagnotest puede ver las zonas pero no asignarlas', async () => {
+  const verLista = await request(app)
+    .get('/api/zonas')
+    .set('Authorization', `Bearer ${diagnotestToken}`);
+  assert.equal(verLista.status, 200);
+  assert.ok(verLista.body.some((z) => z.nombre === 'Palermo'));
+
+  const intentoAsignar = await request(app)
+    .post('/api/zonas/asignar')
+    .set('Authorization', `Bearer ${diagnotestToken}`)
+    .send({ nombre: 'Belgrano', extraccionista_ids: [] });
+  assert.equal(intentoAsignar.status, 403);
+});
+
+test('extraccionista no puede ver ni asignar zonas', async () => {
+  const verLista = await request(app)
+    .get('/api/zonas')
+    .set('Authorization', `Bearer ${jimenaToken}`);
+  assert.equal(verLista.status, 403);
+});

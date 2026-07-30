@@ -40,4 +40,8 @@ export const api = {
   crearUsuario: (token, data) => request('/usuarios', { method: 'POST', body: data, token }),
   actualizarUsuario: (token, id, data) => request(`/usuarios/${id}`, { method: 'PUT', body: data, token }),
   eliminarUsuario: (token, id) => request(`/usuarios/${id}`, { method: 'DELETE', token }),
+
+  listarZonas: (token) => request('/zonas', { token }),
+  asignarZona: (token, nombre, extraccionista_ids) =>
+    request('/zonas/asignar', { method: 'POST', body: { nombre, extraccionista_ids }, token }),
 };
