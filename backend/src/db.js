@@ -45,6 +45,7 @@ const SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS turnos (
     id SERIAL PRIMARY KEY,
     paciente TEXT NOT NULL,
+    raza TEXT,
     tutor TEXT NOT NULL,
     telefono TEXT,
     direccion TEXT,
@@ -79,6 +80,7 @@ const SCHEMA_SQL = `
 const MIGRACIONES_SQL = `
   ALTER TABLE turnos ADD COLUMN IF NOT EXISTS tutor TEXT;
   ALTER TABLE turnos ADD COLUMN IF NOT EXISTS paciente TEXT;
+  ALTER TABLE turnos ADD COLUMN IF NOT EXISTS raza TEXT;
   ALTER TABLE turnos ADD COLUMN IF NOT EXISTS telefono TEXT;
   ALTER TABLE turnos ADD COLUMN IF NOT EXISTS direccion TEXT;
   ALTER TABLE turnos ADD COLUMN IF NOT EXISTS numero_dt TEXT;

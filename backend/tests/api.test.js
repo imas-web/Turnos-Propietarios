@@ -84,7 +84,33 @@ test('jimena crea un turno con tutor y telefono', async () => {
   assert.equal(res.status, 201);
   assert.equal(res.body.estado, 'pendiente');
   assert.equal(res.body.hora_fin, '10:30');
+  assert.equal(res.body.raza, null);
   turnoJimenaId = res.body.id;
+});
+
+test('la raza es opcional al crear un turno, y se puede cargar/editar', async () => {
+  const creado = await request(app)
+    .post('/api/turnos')
+    .set('Authorization', `Bearer ${jimenaToken}`)
+    .send({
+      paciente: 'Firulais',
+      raza: 'Labrador',
+      tutor: 'Familia Raza',
+      telefono: '11-8888-7777',
+      direccion: 'Calle Raza 1',
+      email: 'raza@test.com',
+      fecha: FECHA_FUTURA,
+      hora_inicio: '14:00',
+    });
+  assert.equal(creado.status, 201);
+  assert.equal(creado.body.raza, 'Labrador');
+
+  const editado = await request(app)
+    .put(`/api/turnos/${creado.body.id}`)
+    .set('Authorization', `Bearer ${jimenaToken}`)
+    .send({ raza: 'Labrador mestizo' });
+  assert.equal(editado.status, 200);
+  assert.equal(editado.body.raza, 'Labrador mestizo');
 });
 
 test('daniela si puede tomar el mismo horario (agenda por extraccionista)', async () => {
@@ -197,7 +223,7 @@ test('diagnotest ve todos los turnos pendientes de todas las extraccionistas', a
     .get('/api/turnos')
     .set('Authorization', `Bearer ${diagnotestToken}`);
   assert.equal(res.status, 200);
-  assert.equal(res.body.length, 3);
+  assert.equal(res.body.length, 4);
 });
 
 test('jimena no puede confirmar turnos (solo diagnotest)', async () => {

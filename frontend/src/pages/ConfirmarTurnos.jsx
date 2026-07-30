@@ -305,6 +305,7 @@ export default function ConfirmarTurnos() {
                     {formatearFecha(t.fecha)} · {t.hora_inicio}
                   </div>
                   <strong>{t.paciente}</strong>
+                  {t.raza && <div className="muted">{t.raza}</div>}
                   <div className="muted">Tutor: {t.tutor}</div>
                   <div className="muted">{t.creado_por_nombre}</div>
                   <div className="muted">{t.telefono}</div>

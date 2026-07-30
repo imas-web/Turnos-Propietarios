@@ -124,7 +124,8 @@ router.post(
   '/',
   requireRol('extraccionista'),
   ah(async (req, res) => {
-    const { paciente, tutor, telefono, direccion, email, fecha, hora_inicio } = req.body || {};
+    const { paciente, raza, tutor, telefono, direccion, email, fecha, hora_inicio } =
+      req.body || {};
 
     if (!paciente || !tutor || !telefono || !direccion || !email || !fecha || !hora_inicio) {
       return res.status(400).json({
@@ -139,10 +140,21 @@ router.post(
 
     try {
       const { rows: insertedRows } = await pool.query(
-        `INSERT INTO turnos (paciente, tutor, telefono, direccion, email, fecha, hora_inicio, hora_fin, creado_por)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `INSERT INTO turnos (paciente, raza, tutor, telefono, direccion, email, fecha, hora_inicio, hora_fin, creado_por)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          RETURNING id`,
-        [paciente, tutor, telefono, direccion, email, fecha, hora_inicio, hora_fin, req.usuario.sub]
+        [
+          paciente,
+          raza || null,
+          tutor,
+          telefono,
+          direccion,
+          email,
+          fecha,
+          hora_inicio,
+          hora_fin,
+          req.usuario.sub,
+        ]
       );
 
       const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [
@@ -181,7 +193,8 @@ router.put(
     const existing = existingRows[0];
     if (!existing) return res.status(404).json({ error: 'Turno no encontrado' });
 
-    const { paciente, tutor, telefono, direccion, email, fecha, hora_inicio } = req.body || {};
+    const { paciente, raza, tutor, telefono, direccion, email, fecha, hora_inicio } =
+      req.body || {};
     if (hora_inicio && !horaValida(hora_inicio)) {
       return res.status(400).json({ error: 'Horario invalido' });
     }
@@ -193,10 +206,11 @@ router.put(
     try {
       await pool.query(
         `UPDATE turnos
-         SET paciente = $1, tutor = $2, telefono = $3, direccion = $4, email = $5, fecha = $6, hora_inicio = $7, hora_fin = $8
-         WHERE id = $9`,
+         SET paciente = $1, raza = $2, tutor = $3, telefono = $4, direccion = $5, email = $6, fecha = $7, hora_inicio = $8, hora_fin = $9
+         WHERE id = $10`,
         [
           paciente ?? existing.paciente,
+          raza ?? existing.raza,
           tutor ?? existing.tutor,
           telefono ?? existing.telefono,
           direccion ?? existing.direccion,

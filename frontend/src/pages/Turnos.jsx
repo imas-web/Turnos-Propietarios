@@ -5,6 +5,7 @@ import CalendarioMes from '../components/CalendarioMes.jsx';
 
 const FORM_VACIO = {
   paciente: '',
+  raza: '',
   tutor: '',
   telefono: '',
   direccion: '',
@@ -169,6 +170,7 @@ export default function Turnos() {
     setEditando(turno);
     setForm({
       paciente: turno.paciente,
+      raza: turno.raza || '',
       tutor: turno.tutor,
       telefono: turno.telefono,
       direccion: turno.direccion,
@@ -249,6 +251,15 @@ export default function Turnos() {
             <div className="field">
               <label>Paciente</label>
               <input name="paciente" value={form.paciente} onChange={onChange} required />
+            </div>
+            <div className="field" style={{ marginTop: '0.75rem' }}>
+              <label>Raza (opcional)</label>
+              <input
+                name="raza"
+                placeholder="Ej: Perro, Gato, Labrador..."
+                value={form.raza}
+                onChange={onChange}
+              />
             </div>
             <div className="field" style={{ marginTop: '0.75rem' }}>
               <label>Tutor</label>
@@ -384,6 +395,7 @@ export default function Turnos() {
                   </div>
                   <div className="agenda-datos">
                     <strong>{t.paciente}</strong>
+                    {t.raza && <div className="muted">{t.raza}</div>}
                     <div className="muted">Tutor: {t.tutor}</div>
                     <div className="muted">{t.telefono}</div>
                     <div className="muted">{t.direccion}</div>
