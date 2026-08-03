@@ -44,4 +44,6 @@ export const api = {
   listarZonas: (token) => request('/zonas', { token }),
   asignarZona: (token, nombre, extraccionista_ids) =>
     request('/zonas/asignar', { method: 'POST', body: { nombre, extraccionista_ids }, token }),
+  agregarZonasMasivo: (token, nombres, extraccionista_ids) =>
+    request('/zonas/agregar-masivo', { method: 'POST', body: { nombres, extraccionista_ids }, token }),
 };

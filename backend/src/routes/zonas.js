@@ -50,4 +50,37 @@ router.post(
   })
 );
 
+// Carga masiva: agrega (sin borrar lo existente) una lista de zonas para
+// una o mas extraccionistas de una sola vez, util para cargar decenas de
+// zonas pegando una lista en vez de una por una.
+router.post(
+  '/agregar-masivo',
+  requireRol('admin'),
+  ah(async (req, res) => {
+    const { nombres, extraccionista_ids } = req.body || {};
+    const listaNombres = Array.isArray(nombres)
+      ? [...new Set(nombres.map((n) => (n || '').trim()).filter(Boolean))]
+      : [];
+    const listaIds = Array.isArray(extraccionista_ids) ? extraccionista_ids : [];
+
+    if (listaNombres.length === 0 || listaIds.length === 0) {
+      return res.status(400).json({ error: 'nombres y extraccionista_ids son requeridos' });
+    }
+
+    let insertados = 0;
+    for (const nombre of listaNombres) {
+      for (const id of listaIds) {
+        const { rowCount } = await pool.query(
+          `INSERT INTO zonas (nombre, extraccionista_id) VALUES ($1, $2)
+           ON CONFLICT (nombre, extraccionista_id) DO NOTHING`,
+          [nombre, id]
+        );
+        insertados += rowCount;
+      }
+    }
+
+    res.json({ zonas: listaNombres.length, insertados });
+  })
+);
+
 export default router;

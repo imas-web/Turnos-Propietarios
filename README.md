@@ -59,7 +59,9 @@ frontend/   Panel (React + Vite)
 - **Admin**: gestiona (crea, edita, elimina) las cuentas de tipo
   extraccionista y diagnotest desde el panel, y en la solapa "Zonas" define
   qué barrio/localidad/CP cubre cada extraccionista (una zona puede tener
-  más de una).
+  más de una). Tiene una "Carga masiva" para pegar muchas zonas de una vez
+  (una por línea) y asignarlas a una o más extraccionistas, sin pisar lo
+  ya cargado.
 - **Derivar por zona** (Diagnotest): solapa separada donde escribe el
   barrio/localidad/CP del paciente y la app le dice qué extraccionista(s)
   la cubren, para saber a quién derivar. No usa Google Maps ni geocodifica

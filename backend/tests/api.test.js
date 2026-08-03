@@ -35,6 +35,7 @@ const FECHA_FUTURA = '2030-06-10';
 before(async () => {
   await ensureInit();
   await pool.query('TRUNCATE turnos RESTART IDENTITY CASCADE');
+  await pool.query('TRUNCATE zonas RESTART IDENTITY CASCADE');
 
   jimenaToken = await login('jimena', 'jimena');
   danielaToken = await login('daniela', 'daniela');
@@ -657,4 +658,37 @@ test('extraccionista no puede ver ni asignar zonas', async () => {
     .get('/api/zonas')
     .set('Authorization', `Bearer ${jimenaToken}`);
   assert.equal(verLista.status, 403);
+});
+
+test('admin puede cargar muchas zonas de una vez sin borrar lo existente', async () => {
+  const listado = await request(app)
+    .get('/api/usuarios')
+    .set('Authorization', `Bearer ${adminToken}`);
+  const jimena = listado.body.find((u) => u.usuario === 'jimena');
+  const daniela = listado.body.find((u) => u.usuario === 'daniela');
+
+  const res = await request(app)
+    .post('/api/zonas/agregar-masivo')
+    .set('Authorization', `Bearer ${adminToken}`)
+    .send({ nombres: ['Recoleta', 'Nuñez', 'Recoleta'], extraccionista_ids: [jimena.id] });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.zonas, 2);
+  assert.equal(res.body.insertados, 2);
+
+  const zonas = await request(app)
+    .get('/api/zonas')
+    .set('Authorization', `Bearer ${adminToken}`);
+  assert.ok(zonas.body.some((z) => z.nombre === 'Recoleta' && z.extraccionista_nombre === 'Jimena'));
+  // Palermo ya tenia una asignacion de un test anterior; la carga masiva
+  // de otras zonas no debe haberla tocado.
+  const filasPalermo = zonas.body.filter((z) => z.nombre === 'Palermo');
+  assert.equal(filasPalermo.length, 1);
+
+  const segundaCarga = await request(app)
+    .post('/api/zonas/agregar-masivo')
+    .set('Authorization', `Bearer ${adminToken}`)
+    .send({ nombres: ['Recoleta'], extraccionista_ids: [jimena.id, daniela.id] });
+  assert.equal(segundaCarga.status, 200);
+  // Jimena ya estaba asignada a Recoleta: solo se agrega Daniela.
+  assert.equal(segundaCarga.body.insertados, 1);
 });
