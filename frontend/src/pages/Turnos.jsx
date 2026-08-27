@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { api } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import CalendarioMes from '../components/CalendarioMes.jsx';
@@ -72,6 +72,8 @@ export default function Turnos() {
   const [calAnio, setCalAnio] = useState(() => new Date().getFullYear());
   const [calMes, setCalMes] = useState(() => new Date().getMonth());
   const [turnosMes, setTurnosMes] = useState([]);
+  const [turnoDetalle, setTurnoDetalle] = useState(null);
+  const [cargandoDetalle, setCargandoDetalle] = useState(false);
 
   const cargarTurnosMes = async (anio = calAnio, mes = calMes) => {
     try {
@@ -198,6 +200,26 @@ export default function Turnos() {
         await api.actualizarTurno(token, editando.id, form);
         setMensaje('Turno actualizado.');
       } else {
+        // Verificacion de superposicion antes de enviar al servidor.
+        if (form.fecha && form.hora_inicio) {
+          const existentes = await api.listarTurnos(token, {
+            desde: form.fecha,
+            hasta: form.fecha,
+            estado: 'pendiente',
+          });
+          const confirmados = await api.listarTurnos(token, {
+            desde: form.fecha,
+            hasta: form.fecha,
+            estado: 'confirmado',
+          });
+          const ocupado = [...existentes, ...confirmados].some(
+            (t) => t.hora_inicio === form.hora_inicio && (!editando || t.id !== editando.id)
+          );
+          if (ocupado) {
+            setError(`Ya tenes un turno activo el ${form.fecha} a las ${form.hora_inicio}. Elegí otro horario.`);
+            return;
+          }
+        }
         await api.crearTurno(token, form);
         setMensaje('Turno creado. Queda pendiente de confirmacion.');
       }
@@ -205,6 +227,19 @@ export default function Turnos() {
       await Promise.all([cargarTurnos(), cargarTurnosMes()]);
     } catch (err) {
       setError(err.message);
+    }
+  };
+
+  const verDetalle = async (turno) => {
+    setCargandoDetalle(true);
+    setTurnoDetalle(turno);
+    try {
+      const detalle = await api.obtenerTurno(token, turno.id);
+      setTurnoDetalle(detalle);
+    } catch {
+      // Mantiene el item de la lista si el fetch falla.
+    } finally {
+      setCargandoDetalle(false);
     }
   };
 
@@ -235,6 +270,43 @@ export default function Turnos() {
 
   return (
     <div className="container container-angosto">
+      {turnoDetalle && (
+        <div className="modal-overlay" onClick={() => setTurnoDetalle(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 style={{ margin: 0 }}>Detalle del turno</h2>
+              <button className="btn" onClick={() => setTurnoDetalle(null)}>✕</button>
+            </div>
+            {cargandoDetalle ? (
+              <p className="muted">Cargando...</p>
+            ) : (
+              <>
+                <div className="modal-fila">
+                  <span className="modal-label">Estado</span>
+                  <span className={`badge badge-${turnoDetalle.estado}`}>{ETIQUETAS_ESTADO[turnoDetalle.estado]}</span>
+                </div>
+                {turnoDetalle.estado === 'rechazado' && turnoDetalle.motivo_rechazo && (
+                  <div className="modal-rechazo">
+                    <strong>Motivo de rechazo:</strong> {turnoDetalle.motivo_rechazo}
+                  </div>
+                )}
+                <div className="modal-fila"><span className="modal-label">Paciente</span><span>{turnoDetalle.paciente}</span></div>
+                {turnoDetalle.raza && <div className="modal-fila"><span className="modal-label">Raza</span><span>{turnoDetalle.raza}</span></div>}
+                <div className="modal-fila"><span className="modal-label">Tutor</span><span>{turnoDetalle.tutor}</span></div>
+                <div className="modal-fila"><span className="modal-label">Teléfono</span><span>{turnoDetalle.telefono}</span></div>
+                <div className="modal-fila"><span className="modal-label">Dirección</span><span>{turnoDetalle.direccion}</span></div>
+                <div className="modal-fila"><span className="modal-label">Email</span><span>{turnoDetalle.email}</span></div>
+                <div className="modal-fila"><span className="modal-label">Fecha</span><span>{formatearFecha(turnoDetalle.fecha)}</span></div>
+                <div className="modal-fila"><span className="modal-label">Horario</span><span>{turnoDetalle.hora_inicio} – {turnoDetalle.hora_fin}</span></div>
+                {turnoDetalle.numero_dt && (
+                  <div className="modal-fila"><span className="modal-label">Nº protocolo</span><span>{turnoDetalle.numero_dt}</span></div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {error && <div className="error-banner">{error}</div>}
       {mensaje && <div className="success-banner">{mensaje}</div>}
 
@@ -375,6 +447,7 @@ export default function Turnos() {
               <option value="">Todos los estados</option>
               <option value="pendiente">Pendiente</option>
               <option value="confirmado">Confirmado</option>
+              <option value="rechazado">Rechazado</option>
               <option value="cancelado">Cancelado</option>
             </select>
           </div>
@@ -406,12 +479,15 @@ export default function Turnos() {
                   </div>
                   <span className={`badge badge-${t.estado}`}>{ETIQUETAS_ESTADO[t.estado]}</span>
                   <div className="actions-row">
-                    {t.estado !== 'cancelado' && (
+                    <button className="btn" onClick={() => verDetalle(t)}>
+                      Ver detalle
+                    </button>
+                    {t.estado !== 'cancelado' && t.estado !== 'rechazado' && (
                       <button className="btn" onClick={() => abrirEdicion(t)}>
                         Editar
                       </button>
                     )}
-                    {t.estado !== 'cancelado' && (
+                    {t.estado !== 'cancelado' && t.estado !== 'rechazado' && (
                       <button className="btn" onClick={() => cancelar(t.id)}>
                         Cancelar
                       </button>

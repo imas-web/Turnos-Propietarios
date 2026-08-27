@@ -22,6 +22,7 @@ async function request(path, { method = 'GET', body, token } = {}) {
 export const api = {
   login: (usuario, password) => request('/auth/login', { method: 'POST', body: { usuario, password } }),
 
+  obtenerTurno: (token, id) => request(`/turnos/${id}`, { token }),
   listarTurnos: (token, params = {}) => {
     const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString();
     return request(`/turnos${query ? `?${query}` : ''}`, { token });

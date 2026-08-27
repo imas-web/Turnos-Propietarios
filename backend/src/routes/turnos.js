@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { pool } from '../db.js';
 import { requireAuth, requireRol } from '../middleware/auth.js';
 import { ah } from '../utils/asyncHandler.js';
-import { enviarCorreoConfirmacion, enviarCorreoDatosTurno } from '../utils/mailer.js';
+import { enviarCorreoConfirmacion, enviarCorreoDatosTurno, enviarCorreoRechazo } from '../utils/mailer.js';
 import { fechaYHoraActualEnArgentina } from '../utils/fechaArgentina.js';
 
 const router = Router();
@@ -67,8 +67,6 @@ router.get(
     if (req.usuario.rol === 'extraccionista') {
       params.push(req.usuario.sub);
       condiciones.push(`t.creado_por = $${params.length}`);
-      // Los turnos rechazados no se muestran a la extraccionista.
-      condiciones.push("t.estado != 'rechazado'");
     }
     if (estado) {
       params.push(estado);
@@ -110,10 +108,7 @@ router.get(
     const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
     const turno = rows[0];
     if (!turno) return res.status(404).json({ error: 'Turno no encontrado' });
-    if (
-      req.usuario.rol === 'extraccionista' &&
-      (turno.creado_por !== req.usuario.sub || turno.estado === 'rechazado')
-    ) {
+    if (req.usuario.rol === 'extraccionista' && turno.creado_por !== req.usuario.sub) {
       return res.status(404).json({ error: 'Turno no encontrado' });
     }
     res.json(turno);
@@ -330,7 +325,19 @@ router.post(
     );
 
     const { rows } = await pool.query(`${SELECT_TURNO} WHERE t.id = $1`, [req.params.id]);
-    res.json(rows[0]);
+    const turno = rows[0];
+
+    try {
+      await enviarCorreoRechazo({ to: turno.email, tutor: turno.tutor, turno });
+    } catch (err) {
+      console.error(
+        'No se pudo enviar el correo de rechazo:',
+        err.code || '',
+        err.response || err.message || err
+      );
+    }
+
+    res.json(turno);
   })
 );
 
