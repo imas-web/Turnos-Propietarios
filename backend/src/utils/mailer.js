@@ -97,3 +97,16 @@ export async function enviarCorreoRecordatorio({ to, tutor, turno }) {
 
   return enviarCorreo({ to, asunto, texto });
 }
+
+// Envia el correo de rechazo cuando Diagnotest rechaza un turno.
+export async function enviarCorreoRechazo({ to, tutor, turno }) {
+  const asunto = `Turno rechazado - ${turno.fecha} ${turno.hora_inicio}`;
+  const motivo = turno.motivo_rechazo ? `\nMotivo: ${turno.motivo_rechazo}` : '';
+  const texto =
+    `Hola ${tutor},\n\n` +
+    `Lamentablemente el turno de extraccion de ${turno.paciente} para el ${turno.fecha} a las ${turno.hora_inicio} no pudo ser confirmado.${motivo}\n\n` +
+    `Para reprogramar o consultar, comunicate con nosotros por WhatsApp al 1140611502.\n\n` +
+    `Gracias.`;
+
+  return enviarCorreo({ to, asunto, texto });
+}
